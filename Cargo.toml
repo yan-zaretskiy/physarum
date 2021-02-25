@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 image = "*"
+itertools = "*"
 rand = "*"
 rayon = "*"

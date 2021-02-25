@@ -1,5 +1,6 @@
-use crate::blur::approximate_gauss_blur;
 use rand::{distributions::Uniform, Rng};
+
+use crate::blur::Blur;
 
 /// A 2D grid with a scalar value per each grid block.
 #[derive(Debug)]
@@ -7,7 +8,10 @@ pub struct Grid {
     width: usize,
     height: usize,
     data: Vec<f32>,
+
+    // The scratch space for the blur operation.
     buf: Vec<f32>,
+    blur: Blur,
 }
 
 #[inline(always)]
@@ -30,6 +34,7 @@ impl Grid {
             height,
             data,
             buf: vec![0.0; width * height],
+            blur: Blur::new(width, height),
         }
     }
 
@@ -60,14 +65,8 @@ impl Grid {
 
     /// Diffuse grid data and apply a decay multiplier.
     pub fn diffuse(&mut self, radius: usize, decay_factor: f32) {
-        approximate_gauss_blur(
-            &mut self.data,
-            &mut self.buf,
-            self.width,
-            self.height,
-            radius as f32,
-            decay_factor,
-        );
+        self.blur
+            .run(&mut self.data, &mut self.buf, radius as f32, decay_factor);
     }
 }
 
