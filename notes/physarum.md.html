@@ -1,0 +1,66 @@
+<meta charset="utf-8">
+
+# Physarum Simulation
+
+![Physarum network](network.gif)
+
+This repository contains code that aims to reproduce the model proposed by Jones, 2010. This is a model of pattern formation that mimics the transport networks of the Physarum polycephalum slime mold.
+
+The model uses a regular 2D grid that stores information on the spatial distribution of the chemotactic sensory stimuli. This is called the _trail_ layer in the original paper. Discrete agents move along this grid in a semi-continuous manner. They maintain an internal floating point record of their position and direction, which is rounded to provide the nearest discrete grid cell location. Each grid cell can contain only a single agent. The trail layer is subjected to a simple diffusion operator after every system step (i.e. a sensory sampling of the environment and attempted forward movement for every member of the population). The diffusion operator takes the form of a pseudo-parallel simple mean filter in a 3x3 kernel that is subject to an adjustable decay value to affect chemo-attractant persistence.
+
+## Agent Particle Behaviors
+
+A single agent represents a hypothetical particle of Physarum plasmodium gel-sol structure. An agent occupies a single discrete location in the environment, corresponding to a single pixel of a digitized image. Each agent is typically initialized at a randomly chosen unoccupied and habitable location and with a random orientation between 0 and 360 degrees. The agent receives chemotactic sensory stimuli from its environment via 3 forward sensors and it can rotate left or right about its current position.
+
+At each execution step of the schedule, every agent attempts to move forward one step in the current direction. If the movement is successful (if the next site is not occupied), the agent deposits a constant chemoattractant value at the new site. If the movement is not successful, the agent remains in its current position, no chemoattractant is deposited, and a new orientation is randomly selected. After every agent has attempted to move, the entire population performs its sensory behavior. The agent both deposits to and senses from the trail map, resulting in an autocrine mode of stimuli/response. Here's the diagram of the simulation steps, taken from [here](https://sagejenson.com/physarum):
+
+![Physarum simulation steps](physarum-steps.jpg)
+
+## Trail layer diffusion
+
+The original model applied a simple 3x3 box filter followed by the multiplication by a decay factor, but we want to do a bit better. We implement the approximate Gaussian smoothing as described below.
+
+The discrete Gaussian smoothing is the discrete convolution of an image with the truncated sampled Gaussian kernel $k_\sigma$. The truncation depends on the value of the kernel radius $r$. If we denote the original image of width $W$ and height $H$ as $f$ and the output as $b$ (blurred), we can write the convolution operation as:
+
+$$ k_\sigma[m, n] = \frac{1}{2\pi\sigma^2}\exp\left(-\frac{m^2+n^2}{2\sigma^2}\right),\\
+
+b[i, j] = \sum_{m=-r}^{r} \sum_{n=-r}^{r} k_\sigma[m, n] \cdot f[i-m, j-n].
+$$
+
+The major downside of this brute-force algorithm is that its complexity is $O(W \cdot H \cdot r^2)$, that is, quadratic in the kernel size. Two overcome this, we notice two things. First is that the 2D Gaussian filter is separable,
+
+$$G_\sigma * f = (g_{\sigma\rightarrow} * g_{\sigma\uparrow}) * f = g_{\sigma\rightarrow} * (g_{\sigma\uparrow} * f).$$
+
+The second one is that repeated filtering with 1D box filters converges to a single pass of the 1D Gaussian filter, due to the central limit theorem. One-dimensional box filters can be implemented efficiently because for a given pixel $i$ one can reuse most of the calculations performed on the previous pixel $i-1$. The only difference is in the left-most value of the $i-1$ neighborhood and the right-most value of the $i$ neighborhood.
+
+## Box filter sizes to approximate a given Gaussian
+
+To implement the above optimization, we need to determine the box sizes that best approximate a Gaussian filter of a desired standard deviation $\sigma$. The standard deviation of a box filter of width $w$ is (based on the discrete uniform distribution):
+
+$$ \sigma_b = \sqrt\frac{w^2 - 1}{12}. $$
+
+If we run the same box filter $N$ times, the variances add up, so that the overall standard deviation $\sigma_t$ is
+
+$$ \sigma_t = \sqrt\frac{Nw^2 - N}{12}. $$
+
+We can flip this expression to compute the ideal width of the box filter that one should use to approximate a given Gaussian of standard deviation $\sigma$:
+
+$$ w_\text{ideal} = \sqrt{\frac{12\sigma^2}{N} + 1}. $$
+
+In practice, we can only use filters of integer width and we want the width to be odd, so that it's centered around each pixel. The solution proposed in Kovesi, 2010 is to use two filters: one having the width $w_l$ equal to the first odd integer that is less than $w_\text{ideal}$, and the other having the width $w_u$ equal to the first odd integer greater than $w_\text{ideal}$. Naturally, $w_u = w_l+ 2$. Next we assume we will perform $M$ passes of the $w_l$ filter, followed by $N-M$ passes of the $w_u$ filter, where $0 \leq M \leq N$. The resulting standard deviation will be
+
+$$ \sigma = \sqrt{\frac{Mw_l^2 + (N-M)w_u^2 - N}{12}}, $$
+
+from which we can solve for $M$:
+
+$$ M = \frac{Nw_l^2 + 4Nw_l + 3N - 12\sigma^2}{4(w_l + 1)}, $$
+
+and finally round it to the nearest integer. Therefore, given $\sigma$ and $N$, we can:
+
+1. Compute $w_\text{ideal}$ and hence $w_l$ and $w_u$.
+2. Compute the value of $M$.
+3. Apply the box filter of width $w_l$ $M$ times.
+4. Apply the box filter of width $w_u$ $N-M$ times.
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="markdeep.min.js" charset="utf-8"></script><script src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js?" charset="utf-8"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
+
