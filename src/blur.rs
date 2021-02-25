@@ -44,37 +44,28 @@ fn box_blur(
     radius: usize,
     decay: f32,
 ) {
-    box_blur_h(src, buf, width, height, radius, 1.0);
+    box_blur_h(src, buf, width, radius);
     box_blur_v(buf, src, width, height, radius, decay);
 }
 
-/// Perform one pass of the 1D box filter of the given radius along x axis. Applies the decay factor
-/// to the destination buffer.
-fn box_blur_h(
-    src: &[f32],
-    dst: &mut [f32],
-    width: usize,
-    height: usize,
-    radius: usize,
-    decay: f32,
-) {
-    let weight = decay / (2 * radius + 1) as f32;
+/// Perform one pass of the 1D box filter of the given radius along x axis.
+fn box_blur_h(src: &[f32], dst: &mut [f32], width: usize, radius: usize) {
+    let weight = 1.0 / (2 * radius + 1) as f32;
 
     // TODO: Parallelize with rayon
-    for i in 0..height {
+    for (src_row, dst_row) in src.chunks_exact(width).zip(dst.chunks_exact_mut(width)) {
         // First we build a value for the beginning of each row. We assume periodic boundary
         // conditions, so we need to push the left index to the opposite side of the row.
-        let mut value = src[(i + 1) * width - radius - 1];
+        let mut value = src_row[width - radius - 1];
         for j in 0..radius {
-            value += src[(i + 1) * width - radius + j] + src[i * width + j];
+            value += src_row[width - radius + j] + src_row[j];
         }
         // At this point "value" contains the unweighted sum for the right-most row element.
-
-        for current_id in i * width..(i + 1) * width {
-            let left_id = ((current_id + width - radius - 1) & (width - 1)) + i * width;
-            let right_id = ((current_id + radius) & (width - 1)) + i * width;
-            value += src[right_id] - src[left_id];
-            dst[current_id] = value * weight;
+        for current_id in 0..width {
+            let left_id = (current_id + width - radius - 1) & (width - 1);
+            let right_id = (current_id + radius) & (width - 1);
+            value += src_row[right_id] - src_row[left_id];
+            dst_row[current_id] = value * weight;
         }
     }
 }
@@ -118,7 +109,7 @@ mod tests {
     fn test_blur() {
         let src = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         let mut dst = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        box_blur_v(&src, &mut dst, 2, 4, 1, 1.0);
+        box_blur_h(&src, &mut dst, 4, 1);
         println!("Out: {:?}", dst);
     }
 }
