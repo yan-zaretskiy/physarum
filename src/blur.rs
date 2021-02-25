@@ -63,7 +63,7 @@ impl Blur {
             for j in 0..radius {
                 value += src_row[width - radius + j] + src_row[j];
             }
-            // At this point "value" contains the unweighted sum for the right-most row element.
+
             for i in 0..width {
                 let left = (i + width - radius - 1) & (width - 1);
                 let right = (i + radius) & (width - 1);
@@ -82,7 +82,6 @@ impl Blur {
         // We don't replicate the horizontal filter logic because of the cache-unfriendly memory
         // access patterns of sequential iteration over individual columns. Instead, we iterate over
         // rows via loop interchange.
-
         let offset = (height - radius - 1) * width;
         self.row_buffer
             .copy_from_slice(&src[offset..offset + width]);
@@ -97,7 +96,6 @@ impl Blur {
                 *buf += bottom + top;
             }
         }
-        // At this point row_buffer contains the unweighted sum for all top elements.
 
         for (i, dst_row) in dst.chunks_exact_mut(width).enumerate() {
             let bottom_off = ((i + height - radius - 1) & (height - 1)) * width;
@@ -128,7 +126,7 @@ mod tests {
         blur.box_blur_h(&src, &mut dst, 1);
         assert_eq!(
             dst,
-            &[
+            [
                 2.3333335, 2.0, 3.0, 2.6666667, 6.3333335, 6.0, 7.0, 6.666667, 10.333334, 10.0,
                 11.0, 10.666667, 14.333334, 14.0, 15.0, 14.666667
             ]
