@@ -1,6 +1,7 @@
 use crate::grid::Grid;
 
-use rand::{thread_rng, Rng};
+use rand::{seq::SliceRandom, thread_rng, Rng};
+use rayon::prelude::*;
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
 /// numbers instead of integers.
@@ -13,14 +14,29 @@ struct Agent {
 
 impl Agent {
     /// Construct a new agent with random parameters.
-    fn new(width: usize, height: usize) -> Self {
-        let mut rng = rand::thread_rng();
+    fn new<R: Rng + ?Sized>(width: usize, height: usize, rng: &mut R) -> Self {
         let (x, y, angle) = rng.gen::<(f32, f32, f32)>();
         Agent {
             x: x * width as f32,
             y: y * height as f32,
             angle: angle * std::f32::consts::TAU,
         }
+    }
+
+    /// Update agent's orientation angle and position on the grid.
+    fn rotate_and_move(
+        &mut self,
+        direction: f32,
+        rotation_angle: f32,
+        step_distance: f32,
+        width: usize,
+        height: usize,
+    ) {
+        use crate::util::wrap;
+        let delta_angle = rotation_angle * direction;
+        self.angle = wrap(self.angle + delta_angle, std::f32::consts::TAU);
+        self.x = wrap(self.x + step_distance * self.angle.cos(), width as f32);
+        self.y = wrap(self.y + step_distance * self.angle.sin(), height as f32);
     }
 }
 
@@ -50,9 +66,7 @@ impl PopulationConfig {
     const DECAY_FACTOR_MAX: f32 = 0.1;
 
     /// Construct a random configuration.
-    pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-
+    pub fn new<R: Rng + ?Sized>(rng: &mut R) -> Self {
         PopulationConfig {
             sensor_distance: rng.gen_range(Self::SENSOR_DISTANCE_MIN..=Self::SENSOR_DISTANCE_MAX),
             step_distance: rng.gen_range(Self::STEP_DISTANCE_MIN..=Self::STEP_DISTANCE_MAX),
@@ -81,28 +95,54 @@ pub struct Model {
     config: PopulationConfig,
 
     iteration: i32,
+    width: usize,
+    height: usize,
 }
 
 impl Model {
     /// Construct a new model with random initial conditions and random configuration.
     pub fn new(width: usize, height: usize, n_particles: usize, diffusivity: usize) -> Self {
+        let mut rng = rand::thread_rng();
+
         Model {
             agents: (0..n_particles)
-                .map(|_| Agent::new(width, height))
+                .map(|_| Agent::new(width, height, &mut rng))
                 .collect(),
             grid: Grid::new(width, height),
             diffusivity,
-            config: PopulationConfig::new(),
+            config: PopulationConfig::new(&mut rng),
             iteration: 0,
+            width,
+            height,
+        }
+    }
+
+    fn pick_direction<R: Rng + ?Sized>(center: f32, left: f32, right: f32, rng: &mut R) -> f32 {
+        if (center > left) && (center > right) {
+            0.0
+        } else if (center < left) && (center < right) {
+            *[-1.0, 1.0].choose(rng).unwrap()
+        } else if left < right {
+            1.0
+        } else if right < left {
+            -1.0
+        } else {
+            0.0
         }
     }
 
     /// Perform a single simulation step.
     pub fn step(&mut self) {
+        // To avoid borrow-checker errors inside the parallel loop.
         let sensor_distance = self.config.sensor_distance;
         let sensor_angle = self.config.sensor_angle;
+        let rotation_angle = self.config.rotation_angle;
+        let step_distance = self.config.step_distance;
+        let (width, height) = (self.width, self.height);
+        let grid = &self.grid;
 
-        for agent in self.agents.iter_mut() {
+        self.agents.par_iter_mut().for_each(|agent| {
+            let mut rng = rand::thread_rng();
             let xc = agent.x + agent.angle.cos() * sensor_distance;
             let yc = agent.y + agent.angle.sin() * sensor_distance;
             let xl = agent.x + (agent.angle - sensor_angle).cos() * sensor_distance;
@@ -111,12 +151,15 @@ impl Model {
             let yr = agent.y + (agent.angle + sensor_angle).sin() * sensor_distance;
 
             // Sense
-            let trail_c = self.grid.get(xc, yc);
-            let trail_l = self.grid.get(xl, yl);
-            let trail_r = self.grid.get(xr, yr);
-            // Rotate
-            // Move
-        }
+            let trail_c = grid.get(xc, yc);
+            let trail_l = grid.get(xl, yl);
+            let trail_r = grid.get(xr, yr);
+
+            // Rotate and move
+            let direction = Model::pick_direction(trail_c, trail_l, trail_r, &mut rng);
+            agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
+        });
+
         // Deposit + Diffuse + Decay
     }
 }
