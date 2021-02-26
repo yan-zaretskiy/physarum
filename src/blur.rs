@@ -100,18 +100,19 @@ impl Blur {
             }
         }
 
+        // The outer loop cannot be parallelized because we need to use the buffer sequentially.
         for (i, dst_row) in dst.chunks_exact_mut(width).enumerate() {
             let bottom_off = ((i + height - radius - 1) & (height - 1)) * width;
             let bottom_row = &src[bottom_off..bottom_off + width];
             let top_off = ((i + radius) & (height - 1)) * width;
             let top_row = &src[top_off..top_off + width];
 
-            for (dst, buf, bottom, top) in
-                multizip((dst_row, &mut self.row_buffer, bottom_row, top_row))
-            {
-                *buf += top - bottom;
-                *dst = *buf * weight;
-            }
+            (dst_row, &mut self.row_buffer, bottom_row, top_row)
+                .into_par_iter()
+                .for_each(|(dst, buf, bottom, top)| {
+                    *buf += top - bottom;
+                    *dst = *buf * weight;
+                });
         }
     }
 }
