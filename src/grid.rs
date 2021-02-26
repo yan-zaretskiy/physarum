@@ -9,7 +9,7 @@ pub struct Grid {
     height: usize,
     data: Vec<f32>,
 
-    // The scratch space for the blur operation.
+    // Scratch space for the blur operation.
     buf: Vec<f32>,
     blur: Blur,
 }

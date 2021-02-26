@@ -1,4 +1,4 @@
-use crate::{grid::Grid, trig};
+use crate::grid::Grid;
 
 use rand::{thread_rng, Rng};
 
@@ -97,17 +97,18 @@ impl Model {
         }
     }
 
+    /// Perform a single simulation step.
     pub fn step(&mut self) {
         let sensor_distance = self.config.sensor_distance;
         let sensor_angle = self.config.sensor_angle;
 
         for agent in self.agents.iter_mut() {
-            let xc = agent.x + trig::cos(agent.angle) * sensor_distance;
-            let yc = agent.y + trig::sin(agent.angle) * sensor_distance;
-            let xl = agent.x + trig::cos(agent.angle - sensor_angle) * sensor_distance;
-            let yl = agent.y + trig::sin(agent.angle - sensor_angle) * sensor_distance;
-            let xr = agent.x + trig::cos(agent.angle + sensor_angle) * sensor_distance;
-            let yr = agent.y + trig::sin(agent.angle + sensor_angle) * sensor_distance;
+            let xc = agent.x + agent.angle.cos() * sensor_distance;
+            let yc = agent.y + agent.angle.sin() * sensor_distance;
+            let xl = agent.x + (agent.angle - sensor_angle).cos() * sensor_distance;
+            let yl = agent.y + (agent.angle - sensor_angle).sin() * sensor_distance;
+            let xr = agent.x + (agent.angle + sensor_angle).cos() * sensor_distance;
+            let yr = agent.y + (agent.angle + sensor_angle).sin() * sensor_distance;
 
             // Sense
             let trail_c = self.grid.get(xc, yc);

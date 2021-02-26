@@ -1,7 +1,4 @@
-mod blur;
-mod grid;
-mod model;
-mod trig;
+use physarum::model;
 
 fn main() {
     let model = model::Model::new(4, 4, 20, 1);
