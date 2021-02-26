@@ -134,10 +134,13 @@ impl Model {
     /// Perform a single simulation step.
     pub fn step(&mut self) {
         // To avoid borrow-checker errors inside the parallel loop.
-        let sensor_distance = self.config.sensor_distance;
-        let sensor_angle = self.config.sensor_angle;
-        let rotation_angle = self.config.rotation_angle;
-        let step_distance = self.config.step_distance;
+        let PopulationConfig {
+            sensor_distance,
+            sensor_angle,
+            rotation_angle,
+            step_distance,
+            ..
+        } = self.config;
         let (width, height) = (self.width, self.height);
         let grid = &self.grid;
 
@@ -161,5 +164,7 @@ impl Model {
         });
 
         // Deposit + Diffuse + Decay
+
+        self.iteration += 1;
     }
 }

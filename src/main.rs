@@ -5,4 +5,6 @@ fn main() {
     println!("{:#?}", model);
     model.step();
     println!("{:#?}", model);
+    model.step();
+    println!("{:#?}", model);
 }

@@ -1,4 +1,5 @@
 use itertools::multizip;
+use rayon::prelude::*;
 
 #[derive(Debug)]
 pub struct Blur {
@@ -56,21 +57,23 @@ impl Blur {
         let weight = 1.0 / (2 * radius + 1) as f32;
         let width = self.width;
 
-        for (src_row, dst_row) in src.chunks_exact(width).zip(dst.chunks_exact_mut(width)) {
-            // First we build a value for the beginning of each row. We assume periodic boundary
-            // conditions, so we need to push the left index to the opposite side of the row.
-            let mut value = src_row[width - radius - 1];
-            for j in 0..radius {
-                value += src_row[width - radius + j] + src_row[j];
-            }
+        src.par_chunks_exact(width)
+            .zip(dst.par_chunks_exact_mut(width))
+            .for_each(|(src_row, dst_row)| {
+                // First we build a value for the beginning of each row. We assume periodic boundary
+                // conditions, so we need to push the left index to the opposite side of the row.
+                let mut value = src_row[width - radius - 1];
+                for j in 0..radius {
+                    value += src_row[width - radius + j] + src_row[j];
+                }
 
-            for i in 0..width {
-                let left = (i + width - radius - 1) & (width - 1);
-                let right = (i + radius) & (width - 1);
-                value += src_row[right] - src_row[left];
-                dst_row[i] = value * weight;
-            }
-        }
+                for i in 0..width {
+                    let left = (i + width - radius - 1) & (width - 1);
+                    let right = (i + radius) & (width - 1);
+                    value += src_row[right] - src_row[left];
+                    dst_row[i] = value * weight;
+                }
+            })
     }
 
     /// Perform one pass of the 1D box filter of the given radius along y axis. Applies the decay
