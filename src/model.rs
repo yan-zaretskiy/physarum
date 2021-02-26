@@ -1,4 +1,4 @@
-use crate::grid::Grid;
+use crate::{grid::Grid, trig};
 
 use rand::{thread_rng, Rng};
 
@@ -12,6 +12,7 @@ struct Agent {
 }
 
 impl Agent {
+    /// Construct a new agent with random parameters.
     fn new(width: usize, height: usize) -> Self {
         let mut rng = rand::thread_rng();
         let (x, y, angle) = rng.gen::<(f32, f32, f32)>();
@@ -48,7 +49,7 @@ impl PopulationConfig {
     const DECAY_FACTOR_MIN: f32 = 0.1;
     const DECAY_FACTOR_MAX: f32 = 0.1;
 
-    /// Generate a random configuration.
+    /// Construct a random configuration.
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
 
@@ -83,6 +84,7 @@ pub struct Model {
 }
 
 impl Model {
+    /// Construct a new model with random initial conditions and random configuration.
     pub fn new(width: usize, height: usize, n_particles: usize, diffusivity: usize) -> Self {
         Model {
             agents: (0..n_particles)
@@ -93,5 +95,27 @@ impl Model {
             config: PopulationConfig::new(),
             iteration: 0,
         }
+    }
+
+    pub fn step(&mut self) {
+        let sensor_distance = self.config.sensor_distance;
+        let sensor_angle = self.config.sensor_angle;
+
+        for agent in self.agents.iter_mut() {
+            let xc = agent.x + trig::cos(agent.angle) * sensor_distance;
+            let yc = agent.y + trig::sin(agent.angle) * sensor_distance;
+            let xl = agent.x + trig::cos(agent.angle - sensor_angle) * sensor_distance;
+            let yl = agent.y + trig::sin(agent.angle - sensor_angle) * sensor_distance;
+            let xr = agent.x + trig::cos(agent.angle + sensor_angle) * sensor_distance;
+            let yr = agent.y + trig::sin(agent.angle + sensor_angle) * sensor_distance;
+
+            // Sense
+            let trail_c = self.grid.get(xc, yc);
+            let trail_l = self.grid.get(xl, yl);
+            let trail_r = self.grid.get(xr, yr);
+            // Rotate
+            // Move
+        }
+        // Deposit + Diffuse + Decay
     }
 }
