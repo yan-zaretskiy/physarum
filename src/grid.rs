@@ -17,8 +17,7 @@ pub struct Grid {
 impl Grid {
     /// Create a new grid filled with random floats in the [0.0..1.0) range.
     pub fn new(width: usize, height: usize) -> Self {
-        use crate::util::is_power_of_two;
-        if !is_power_of_two(width) || !is_power_of_two(height) {
+        if !width.is_power_of_two() || !height.is_power_of_two() {
             panic!("Grid dimensitions must be a power of two.");
         }
         let rng = rand::thread_rng();

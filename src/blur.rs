@@ -32,8 +32,7 @@ impl Blur {
     fn boxes_for_gaussian<const N: usize>(sigma: f32) -> ([usize; N]) {
         let w_ideal = (12.0 * sigma * sigma / N as f32 + 1.0).sqrt();
         let mut w = w_ideal as usize;
-        w -= 1 - w & 1;
-
+        w -= 1 - (w & 1);
         let mut m = 0.25 * (N * (w + 3)) as f32;
         m -= 3.0 * sigma * sigma / (w + 1) as f32;
         let m = m.round() as usize;
@@ -144,5 +143,17 @@ mod tests {
                 12.0, 7.666667, 8.666667, 9.666667, 10.666667
             ]
         )
+    }
+
+    #[test]
+    fn test_boxes_for_gaussian() {
+        let boxes = Blur::boxes_for_gaussian::<3>(1.5);
+        assert_eq!(boxes, [1, 1, 1]);
+
+        let boxes = Blur::boxes_for_gaussian::<3>(1.8);
+        assert_eq!(boxes, [1, 1, 2]);
+
+        let boxes = Blur::boxes_for_gaussian::<3>(2.5);
+        assert_eq!(boxes, [2, 2, 2]);
     }
 }

@@ -1,6 +1,6 @@
 use crate::grid::Grid;
 
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{seq::SliceRandom, Rng};
 use rayon::prelude::*;
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
@@ -49,6 +49,7 @@ struct PopulationConfig {
     decay_factor: f32,
     sensor_angle: f32,
     rotation_angle: f32,
+    deposition_amount: f32,
 }
 
 impl PopulationConfig {
@@ -77,6 +78,8 @@ impl PopulationConfig {
             rotation_angle: rng
                 .gen_range(Self::ROTATION_ANGLE_MIN..=Self::ROTATION_ANGLE_MAX)
                 .to_radians(),
+            deposition_amount: rng
+                .gen_range(Self::DEPOSITION_AMOUNT_MIN..=Self::DEPOSITION_AMOUNT_MAX),
         }
     }
 }
@@ -163,8 +166,14 @@ impl Model {
             agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
         });
 
-        // Deposit + Diffuse + Decay
-
+        // Deposit
+        for agent in self.agents.iter() {
+            self.grid
+                .add(agent.x, agent.y, self.config.deposition_amount);
+        }
+        // Diffuse + Decay
+        self.grid
+            .diffuse(self.diffusivity, self.config.decay_factor);
         self.iteration += 1;
     }
 }
