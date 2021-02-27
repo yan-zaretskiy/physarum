@@ -176,4 +176,18 @@ impl Model {
             .diffuse(self.diffusivity, self.config.decay_factor);
         self.iteration += 1;
     }
+
+    /// Output the current trail layer as a grayscale image.
+    pub fn save_to_image(&self) {
+        let mut img = image::GrayImage::new(self.width as u32, self.height as u32);
+        let max_value = self.grid.quantile(0.999);
+
+        for (i, value) in self.grid.data().iter().enumerate() {
+            let x = (i % self.width) as u32;
+            let y = (i / self.width) as u32;
+            let c = (value / max_value).clamp(0.0, 1.0) * 255.0;
+            img.put_pixel(x, y, image::Luma([c as u8]));
+        }
+        img.save("out.png").unwrap();
+    }
 }

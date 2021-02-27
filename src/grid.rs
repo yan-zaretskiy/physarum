@@ -63,6 +63,23 @@ impl Grid {
         self.blur
             .run(&mut self.data, &mut self.buf, radius as f32, decay_factor);
     }
+
+    pub fn quantile(&self, fraction: f32) -> f32 {
+        let index = if fraction == 1.0 {
+            self.data.len() - 1
+        } else {
+            (self.data.len() as f32 * fraction) as usize
+        };
+        let mut sorted = self.data.clone();
+        sorted
+            .as_mut_slice()
+            .select_nth_unstable_by(index, |a, b| a.partial_cmp(b).unwrap());
+        sorted[index]
+    }
+
+    pub fn data(&self) -> &[f32] {
+        &self.data
+    }
 }
 
 #[cfg(test)]

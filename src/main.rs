@@ -1,10 +1,9 @@
 use physarum::model;
 
 fn main() {
-    let mut model = model::Model::new(4, 4, 20, 1);
+    let mut model = model::Model::new(128, 128, 4096, 1);
     println!("{:#?}", model);
     model.step();
-    println!("{:#?}", model);
     model.step();
-    println!("{:#?}", model);
+    model.save_to_image();
 }
