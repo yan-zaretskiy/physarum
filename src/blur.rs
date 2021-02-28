@@ -106,12 +106,12 @@ impl Blur {
             let top_off = ((i + radius) & (height - 1)) * width;
             let top_row = &src[top_off..top_off + width];
 
-            (dst_row, &mut self.row_buffer, bottom_row, top_row)
-                .into_par_iter()
-                .for_each(|(dst, buf, bottom, top)| {
-                    *buf += top - bottom;
-                    *dst = *buf * weight;
-                });
+            for (dst, buf, bottom, top) in
+                multizip((dst_row, &mut self.row_buffer, bottom_row, top_row))
+            {
+                *buf += top - bottom;
+                *dst = *buf * weight;
+            }
         }
     }
 }
