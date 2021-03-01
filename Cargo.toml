@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 image = "*"
+indicatif = "0.15"
 itertools = "*"
 rand = "*"
 rayon = "*"
