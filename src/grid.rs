@@ -18,7 +18,7 @@ impl Grid {
     /// Create a new grid filled with random floats in the [0.0..1.0) range.
     pub fn new(width: usize, height: usize) -> Self {
         if !width.is_power_of_two() || !height.is_power_of_two() {
-            panic!("Grid dimensitions must be a power of two.");
+            panic!("Grid dimensions must be a power of two.");
         }
         let rng = rand::thread_rng();
         let range = Uniform::from(0.0..1.0);
@@ -35,8 +35,9 @@ impl Grid {
 
     /// Truncate x and y and return a corresponding index into the data slice.
     fn index(&self, x: f32, y: f32) -> usize {
-        let i = (x as usize + self.width) & (self.width - 1);
-        let j = (y as usize + self.height) & (self.height - 1);
+        // x/y can come in negative, hence we shift them by width/height.
+        let i = (x + self.width as f32) as usize & (self.width - 1);
+        let j = (y + self.height as f32) as usize & (self.height - 1);
         j * self.width + i
     }
 

@@ -2,6 +2,7 @@ use crate::grid::Grid;
 
 use rand::{seq::SliceRandom, Rng};
 use rayon::prelude::*;
+use std::f32::consts::TAU;
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
 /// numbers instead of integers.
@@ -19,7 +20,7 @@ impl Agent {
         Agent {
             x: x * width as f32,
             y: y * height as f32,
-            angle: angle * std::f32::consts::TAU,
+            angle: angle * TAU,
         }
     }
 
@@ -34,7 +35,7 @@ impl Agent {
     ) {
         use crate::util::wrap;
         let delta_angle = rotation_angle * direction;
-        self.angle = wrap(self.angle + delta_angle, std::f32::consts::TAU);
+        self.angle = wrap(self.angle + delta_angle, TAU);
         self.x = wrap(self.x + step_distance * self.angle.cos(), width as f32);
         self.y = wrap(self.y + step_distance * self.angle.sin(), height as f32);
     }
@@ -43,7 +44,7 @@ impl Agent {
 /// A model configuration. We make it into a separate type, because we will eventually have multiple
 /// configurations in one model.
 #[derive(Debug)]
-struct PopulationConfig {
+pub struct PopulationConfig {
     sensor_distance: f32,
     step_distance: f32,
     decay_factor: f32,
@@ -95,7 +96,7 @@ pub struct Model {
 
     // Simulation parameters.
     diffusivity: usize,
-    config: PopulationConfig,
+    pub config: PopulationConfig,
 
     iteration: i32,
     width: usize,
@@ -178,7 +179,7 @@ impl Model {
     }
 
     /// Output the current trail layer as a grayscale image.
-    pub fn save_to_image(&self) {
+    pub fn save_to_image(&self, name: &str) {
         let mut img = image::GrayImage::new(self.width as u32, self.height as u32);
         let max_value = self.grid.quantile(0.999);
 
@@ -188,6 +189,6 @@ impl Model {
             let c = (value / max_value).clamp(0.0, 1.0) * 255.0;
             img.put_pixel(x, y, image::Luma([c as u8]));
         }
-        img.save("out.png").unwrap();
+        img.save(name).unwrap();
     }
 }
