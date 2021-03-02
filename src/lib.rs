@@ -1,5 +1,6 @@
 mod blur;
 mod grid;
 pub mod model;
-pub mod trig;
+mod palette;
+pub mod trig; // for benchmarking
 mod util;

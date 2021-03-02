@@ -13,7 +13,7 @@ impl Blur {
         }
     }
 
-    /// Blur an image with 3 box filter passes. The result will be written to the src slice, while
+    /// Blur an image with 2 box filter passes. The result will be written to the src slice, while
     /// the buf slice is used as a scratch space.
     pub fn run(
         &mut self,

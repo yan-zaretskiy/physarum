@@ -1,9 +1,13 @@
-use crate::grid::{combine, Grid, PopulationConfig};
+use crate::{
+    grid::{combine, Grid, PopulationConfig},
+    palette::{random_palette, Palette},
+};
 
 use rand::{seq::SliceRandom, Rng};
 use rand_distr::{Distribution, Normal};
 use rayon::prelude::*;
 
+use itertools::multizip;
 use std::f32::consts::TAU;
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
@@ -46,7 +50,6 @@ impl Agent {
 }
 
 /// Top-level simulation class.
-#[derive(Debug)]
 pub struct Model {
     // Physarum agents.
     agents: Vec<Agent>,
@@ -62,6 +65,8 @@ pub struct Model {
 
     // Current model iteration.
     iteration: i32,
+
+    palette: Palette,
 }
 
 impl Model {
@@ -117,6 +122,7 @@ impl Model {
             attraction_table,
             diffusivity,
             iteration: 0,
+            palette: random_palette(),
         }
     }
 
@@ -138,8 +144,7 @@ impl Model {
     pub fn step(&mut self) {
         // Combine grids
         let grids = &mut self.grids;
-        let attraction_table = &self.attraction_table;
-        combine(grids, attraction_table);
+        combine(grids, &self.attraction_table);
 
         self.agents.par_iter_mut().for_each(|agent| {
             let grid = &grids[agent.population_id];
@@ -159,7 +164,8 @@ impl Model {
             let xr = agent.x + (agent.angle + sensor_angle).cos() * sensor_distance;
             let yr = agent.y + (agent.angle + sensor_angle).sin() * sensor_distance;
 
-            // Sense
+            // Sense. We sense from the buffer because this is where we previously combined data
+            // from all the grid.
             let trail_c = grid.get_buf(xc, yc);
             let trail_l = grid.get_buf(xl, yl);
             let trail_r = grid.get_buf(xr, yr);
@@ -185,16 +191,35 @@ impl Model {
 
     /// Output the current trail layer as a grayscale image.
     pub fn save_to_image(&self, name: &str) {
-        let mut img =
-            image::GrayImage::new(self.grids[0].width as u32, self.grids[0].height as u32);
-        let max_value = self.grids[0].quantile(0.999);
+        let (width, height) = (self.grids[0].width, self.grids[0].height);
+        let mut img = image::RgbImage::new(width as u32, height as u32);
 
-        for (i, value) in self.grids[0].data().iter().enumerate() {
-            let x = (i % self.grids[0].width) as u32;
-            let y = (i / self.grids[0].width) as u32;
-            let c = (value / max_value).clamp(0.0, 1.0) * 255.0;
-            img.put_pixel(x, y, image::Luma([c as u8]));
+        let max_values: Vec<_> = self
+            .grids
+            .iter()
+            .map(|grid| grid.quantile(0.999) * 1.5)
+            .collect();
+
+        for y in 0..height {
+            for x in 0..width {
+                let i = y * width + x;
+                let (mut r, mut g, mut b) = (0.0_f32, 0.0_f32, 0.0_f32);
+                for (grid, max_value, color) in
+                    multizip((&self.grids, &max_values, &self.palette.colors))
+                {
+                    let mut t = (grid.data()[i] / max_value).clamp(0.0, 1.0);
+                    t = t.powf(1.0 / 2.2); // gamma correction
+                    r += color.0[0] as f32 * t;
+                    g += color.0[1] as f32 * t;
+                    b += color.0[2] as f32 * t;
+                }
+                r = r.clamp(0.0, 255.0);
+                g = g.clamp(0.0, 255.0);
+                b = b.clamp(0.0, 255.0);
+                img.put_pixel(x as u32, y as u32, image::Rgb([r as u8, g as u8, b as u8]));
+            }
         }
+
         img.save(name).unwrap();
     }
 }
