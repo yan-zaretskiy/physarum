@@ -1,12 +1,76 @@
-use rand::{distributions::Uniform, Rng};
-
 use crate::blur::Blur;
 
-/// A 2D grid with a scalar value per each grid block.
+use rand::{distributions::Uniform, Rng};
+
+use std::fmt::{Display, Formatter};
+
+/// A population configuration.
+#[derive(Debug)]
+pub struct PopulationConfig {
+    pub sensor_distance: f32,
+    pub step_distance: f32,
+    pub sensor_angle: f32,
+    pub rotation_angle: f32,
+
+    decay_factor: f32,
+    deposition_amount: f32,
+}
+
+impl Display for PopulationConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{\n  Sensor Distance: {},\n  Step Distance: {},\n  Sensor Angle: {},\n  Rotation Angle: {},\n  Decay Factor: {},\n  Deposition Amount: {},\n}}",
+            self.sensor_distance,
+            self.step_distance,
+            self.sensor_angle,
+            self.rotation_angle,
+            self.decay_factor,
+            self.deposition_amount
+        )
+    }
+}
+
+impl PopulationConfig {
+    const SENSOR_ANGLE_MIN: f32 = 0.0;
+    const SENSOR_ANGLE_MAX: f32 = 120.0;
+    const SENSOR_DISTANCE_MIN: f32 = 0.0;
+    const SENSOR_DISTANCE_MAX: f32 = 64.0;
+    const ROTATION_ANGLE_MIN: f32 = 0.0;
+    const ROTATION_ANGLE_MAX: f32 = 120.0;
+    const STEP_DISTANCE_MIN: f32 = 0.2;
+    const STEP_DISTANCE_MAX: f32 = 2.0;
+    const DEPOSITION_AMOUNT_MIN: f32 = 5.0;
+    const DEPOSITION_AMOUNT_MAX: f32 = 5.0;
+    const DECAY_FACTOR_MIN: f32 = 0.1;
+    const DECAY_FACTOR_MAX: f32 = 0.1;
+
+    /// Construct a random configuration.
+    pub fn new<R: Rng + ?Sized>(rng: &mut R) -> Self {
+        PopulationConfig {
+            sensor_distance: rng.gen_range(Self::SENSOR_DISTANCE_MIN..=Self::SENSOR_DISTANCE_MAX),
+            step_distance: rng.gen_range(Self::STEP_DISTANCE_MIN..=Self::STEP_DISTANCE_MAX),
+            decay_factor: rng.gen_range(Self::DECAY_FACTOR_MIN..=Self::DECAY_FACTOR_MAX),
+            sensor_angle: rng
+                .gen_range(Self::SENSOR_ANGLE_MIN..=Self::SENSOR_ANGLE_MAX)
+                .to_radians(),
+            rotation_angle: rng
+                .gen_range(Self::ROTATION_ANGLE_MIN..=Self::ROTATION_ANGLE_MAX)
+                .to_radians(),
+            deposition_amount: rng
+                .gen_range(Self::DEPOSITION_AMOUNT_MIN..=Self::DEPOSITION_AMOUNT_MAX),
+        }
+    }
+}
+
+/// A 2D grid with a scalar value per each grid block. Each grid is occupied by a single population,
+/// hence we store the population config inside the grid.
 #[derive(Debug)]
 pub struct Grid {
-    width: usize,
-    height: usize,
+    pub config: PopulationConfig,
+    pub width: usize,
+    pub height: usize,
+
     data: Vec<f32>,
 
     // Scratch space for the blur operation.
@@ -16,11 +80,10 @@ pub struct Grid {
 
 impl Grid {
     /// Create a new grid filled with random floats in the [0.0..1.0) range.
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new<R: Rng + ?Sized>(width: usize, height: usize, rng: &mut R) -> Self {
         if !width.is_power_of_two() || !height.is_power_of_two() {
             panic!("Grid dimensions must be a power of two.");
         }
-        let rng = rand::thread_rng();
         let range = Uniform::from(0.0..1.0);
         let data = rng.sample_iter(range).take(width * height).collect();
 
@@ -28,8 +91,9 @@ impl Grid {
             width,
             height,
             data,
+            config: PopulationConfig::new(rng),
             buf: vec![0.0; width * height],
-            blur: Blur::new(width, height),
+            blur: Blur::new(width),
         }
     }
 
@@ -41,12 +105,6 @@ impl Grid {
         j * self.width + i
     }
 
-    /// Get the data value at a given position. The implementation effectively treats data as
-    /// periodic, hence any finite position will produce a value.
-    pub fn get(&self, x: f32, y: f32) -> f32 {
-        self.data[self.index(x, y)]
-    }
-
     /// Get the buffer value at a given position. The implementation effectively treats data as
     /// periodic, hence any finite position will produce a value.
     pub fn get_buf(&self, x: f32, y: f32) -> f32 {
@@ -54,19 +112,25 @@ impl Grid {
     }
 
     /// Add a value to the grid data at a given position.
-    pub fn add(&mut self, x: f32, y: f32, value: f32) {
+    pub fn deposit(&mut self, x: f32, y: f32) {
         let idx = self.index(x, y);
-        self.data[idx] += value
+        self.data[idx] += self.config.deposition_amount;
     }
 
     /// Diffuse grid data and apply a decay multiplier.
-    pub fn diffuse(&mut self, radius: usize, decay_factor: f32) {
-        self.blur
-            .run(&mut self.data, &mut self.buf, radius as f32, decay_factor);
+    pub fn diffuse(&mut self, radius: usize) {
+        self.blur.run(
+            &mut self.data,
+            &mut self.buf,
+            self.width,
+            self.height,
+            radius as f32,
+            self.config.decay_factor,
+        );
     }
 
     pub fn quantile(&self, fraction: f32) -> f32 {
-        let index = if fraction == 1.0 {
+        let index = if (fraction - 1.0_f32).abs() < f32::EPSILON {
             self.data.len() - 1
         } else {
             (self.data.len() as f32 * fraction) as usize
@@ -83,6 +147,30 @@ impl Grid {
     }
 }
 
+pub fn combine<T>(grids: &mut [Grid], attraction_table: &[T])
+where
+    T: AsRef<[f32]> + Sync,
+{
+    let datas: Vec<_> = grids.iter().map(|grid| &grid.data).collect();
+    let bufs: Vec<_> = grids.iter().map(|grid| &grid.buf).collect();
+
+    // We mutate grid buffers and read grid data. We use unsafe because we need shared/unique
+    // borrows on different fields of the same Grid struct.
+    bufs.iter().enumerate().for_each(|(i, buf)| unsafe {
+        let buf_ptr = *buf as *const Vec<f32> as *mut Vec<f32>;
+        buf_ptr.as_mut().unwrap().fill(0.0);
+        datas.iter().enumerate().for_each(|(j, other)| {
+            let multiplier = attraction_table[i].as_ref()[j];
+            buf_ptr
+                .as_mut()
+                .unwrap()
+                .iter_mut()
+                .zip(*other)
+                .for_each(|(to, from)| *to += from * multiplier)
+        })
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,12 +178,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_grid_new_panics() {
-        let _ = Grid::new(5, 5);
+        let mut rng = rand::thread_rng();
+        let _ = Grid::new(5, 5, &mut rng);
     }
 
     #[test]
     fn test_grid_new() {
-        let grid = Grid::new(8, 8);
+        let mut rng = rand::thread_rng();
+        let grid = Grid::new(8, 8, &mut rng);
         assert_eq!(grid.index(0.5, 0.6), 0);
         assert_eq!(grid.index(1.5, 0.6), 1);
         assert_eq!(grid.index(0.5, 1.6), 8);

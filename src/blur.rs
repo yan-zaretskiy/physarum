@@ -3,27 +3,30 @@ use rayon::prelude::*;
 
 #[derive(Debug)]
 pub struct Blur {
-    width: usize,
-    height: usize,
     row_buffer: Vec<f32>,
 }
 
 impl Blur {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize) -> Self {
         Blur {
-            width,
-            height,
             row_buffer: vec![0.0; width],
         }
     }
 
     /// Blur an image with 3 box filter passes. The result will be written to the src slice, while
     /// the buf slice is used as a scratch space.
-    pub fn run(&mut self, src: &mut [f32], buf: &mut [f32], sigma: f32, decay: f32) {
-        let boxes = Blur::boxes_for_gaussian::<3>(sigma);
-        self.box_blur(src, buf, boxes[0], 1.0);
-        self.box_blur(src, buf, boxes[1], 1.0);
-        self.box_blur(src, buf, boxes[2], decay);
+    pub fn run(
+        &mut self,
+        src: &mut [f32],
+        buf: &mut [f32],
+        width: usize,
+        height: usize,
+        sigma: f32,
+        decay: f32,
+    ) {
+        let boxes = Blur::boxes_for_gaussian::<2>(sigma);
+        self.box_blur(src, buf, width, height, boxes[0], 1.0);
+        self.box_blur(src, buf, width, height, boxes[1], decay);
     }
 
     /// Approximate 1D Gaussian filter of standard deviation sigma with N box filter passes. Each
@@ -46,15 +49,22 @@ impl Blur {
 
     /// Perform one pass of the 2D box filter of the given radius. The result will be written to the
     /// src slice, while the buf slice is used as a scratch space.
-    fn box_blur(&mut self, src: &mut [f32], buf: &mut [f32], radius: usize, decay: f32) {
-        self.box_blur_h(src, buf, radius);
-        self.box_blur_v(buf, src, radius, decay);
+    fn box_blur(
+        &mut self,
+        src: &mut [f32],
+        buf: &mut [f32],
+        width: usize,
+        height: usize,
+        radius: usize,
+        decay: f32,
+    ) {
+        self.box_blur_h(src, buf, width, radius);
+        self.box_blur_v(buf, src, width, height, radius, decay);
     }
 
     /// Perform one pass of the 1D box filter of the given radius along x axis.
-    fn box_blur_h(&mut self, src: &[f32], dst: &mut [f32], radius: usize) {
+    fn box_blur_h(&mut self, src: &[f32], dst: &mut [f32], width: usize, radius: usize) {
         let weight = 1.0 / (2 * radius + 1) as f32;
-        let width = self.width;
 
         src.par_chunks_exact(width)
             .zip(dst.par_chunks_exact_mut(width))
@@ -66,20 +76,27 @@ impl Blur {
                     value += src_row[width - radius + j] + src_row[j];
                 }
 
-                for i in 0..width {
+                for (i, dst_elem) in dst_row.iter_mut().enumerate() {
                     let left = (i + width - radius - 1) & (width - 1);
                     let right = (i + radius) & (width - 1);
                     value += src_row[right] - src_row[left];
-                    dst_row[i] = value * weight;
+                    *dst_elem = value * weight;
                 }
             })
     }
 
     /// Perform one pass of the 1D box filter of the given radius along y axis. Applies the decay
     /// factor to the destination buffer.
-    fn box_blur_v(&mut self, src: &[f32], dst: &mut [f32], radius: usize, decay: f32) {
+    fn box_blur_v(
+        &mut self,
+        src: &[f32],
+        dst: &mut [f32],
+        width: usize,
+        height: usize,
+        radius: usize,
+        decay: f32,
+    ) {
         let weight = decay / (2 * radius + 1) as f32;
-        let (width, height) = (self.width, self.height);
 
         // We don't replicate the horizontal filter logic because of the cache-unfriendly memory
         // access patterns of sequential iteration over individual columns. Instead, we iterate over
@@ -142,9 +159,9 @@ mod tests {
         ];
         let (width, height) = (8, 8);
         let mut dst = vec![0.0; width * height];
-        let mut blur = Blur::new(width, height);
+        let mut blur = Blur::new(width);
 
-        blur.box_blur_h(&src, &mut dst, 1);
+        blur.box_blur_h(&src, &mut dst, width, 1);
         let mut sol: Vec<f32> = vec![
             0.33921536, 0.13621319, 0.04954382, 0.26381392, 0.46308973, 0.49737768, 0.47066893,
             0.37277121, 0.44850051, 0.37332688, 0.21674603, 0.36333409, 0.48751974, 0.70454735,
@@ -161,7 +178,7 @@ mod tests {
             assert!((v1 - v2).abs() < 1e-6);
         }
 
-        blur.box_blur_v(&src, &mut dst, 1, 1.0);
+        blur.box_blur_v(&src, &mut dst, width, height, 1, 1.0);
         sol = vec![
             0.50403511, 0.38229549, 0.19629186, 0.29968528, 0.51910173, 0.61901508, 0.44607546,
             0.53130095, 0.52355005, 0.177688, 0.16011561, 0.08289763, 0.51645436, 0.46399322,
@@ -178,7 +195,7 @@ mod tests {
             assert!((v1 - v2).abs() < 1e-6);
         }
 
-        blur.box_blur(&mut src, &mut dst, 1, 1.0);
+        blur.box_blur(&mut src, &mut dst, width, height, 1, 1.0);
         sol = vec![
             0.47254385, 0.36087415, 0.29275754, 0.33835963, 0.47926736, 0.52806409, 0.5321305,
             0.49380384, 0.46566129, 0.28711789, 0.14023375, 0.25315587, 0.3544484, 0.45375601,

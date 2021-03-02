@@ -1,5 +1,6 @@
 use indicatif::{ProgressBar, ProgressStyle};
 use physarum::model;
+use rand::Rng;
 
 fn main() {
     let n_iterations = 400;
@@ -15,8 +16,9 @@ fn main() {
     let (width, height) = (1024, 1024);
     let n_particles = 1 << 22;
     let diffusivity = 1;
-    let mut model = model::Model::new(width, height, n_particles, diffusivity);
-    println!("Model configuration: {:#?}", model.config);
+    let n_populations = 1 + rand::thread_rng().gen_range(1..4);
+    let mut model = model::Model::new(width, height, n_particles, n_populations, diffusivity);
+    model.print_configurations();
 
     for i in 0..n_iterations {
         model.step();
