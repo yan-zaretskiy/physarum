@@ -33,6 +33,8 @@ fn main() {
     }
     pb.finish();
 
+    println!("Rendering all saved image data....");
     model.render_all_imgdata();
     model.flush_image_data();
+    println!("Done!");
 }

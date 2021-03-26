@@ -18,6 +18,8 @@ use rayon::iter::{ParallelIterator, IntoParallelIterator};
 
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 
+use std::path::Path;
+
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
 /// numbers instead of integers.
 #[derive(Debug)]
@@ -235,6 +237,10 @@ impl Model {
     }
 
     pub fn render_all_imgdata(&self) {
+        if not Path::new("./tmp").exists() {
+            std::fs::create_dir("./tmp");
+        }
+
         let pb = ProgressBar::new(self.img_data_vec.len() as u64);
         pb.set_style(ProgressStyle::default_bar().template(
             "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] ({pos}/{len}, {percent}%, {per_sec})",
