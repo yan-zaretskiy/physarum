@@ -14,11 +14,11 @@ fn main() {
     }
 
     // let n_iterations = 16384;
-    let n_iterations = 2024;
+    let n_iterations = 1000;
     // let n_iterations = 10;
 
-    let (width, height) = (512, 512);
-    // let (width, height) = (1024, 1024);
+    // let (width, height) = (512, 512);
+    let (width, height) = (1024, 1024);
     // let (width, height) = (2048, 2048);
 
     // let n_particles = 1 << 22;
@@ -38,7 +38,7 @@ fn main() {
     );
 
     // let n_populations = 1 + rng.gen_range(1..4);
-    let n_populations = 2;
+    let n_populations = 10;
     let mut model = model::Model::new(width, height, n_particles, n_populations, diffusivity);
     model.print_configurations();
 
