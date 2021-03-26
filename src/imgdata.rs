@@ -4,27 +4,6 @@ use crate::{
 };
 
 
-use rayon::iter::{ParallelIterator, IntoParallelIterator};
-
-// for file stuff
-use std::fs;
-use std::io::{BufRead, Write, BufReader};
-use std::fs::File;
-use std::path::Path;
-use std::fs::OpenOptions;
-
-/*
-fn get_resumed_primes(file_path: &str) -> Vec<i32> {
-    let path = Path::new(file_path);
-    let lines = lines_from_file(path);
-
-    let resumed_primes = lines.par_iter().map(|x| {
-        return str::replace(&str::replace(x, "Invalid: ", ""), "Prime: ", "").parse::<i32>().unwrap();
-    }).collect();
-    return resumed_primes;
-}
-*/
-
 // Class for storing data that will be used to create images
 pub struct ImgData {
     pub grids: Vec<Grid>,
