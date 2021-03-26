@@ -5,10 +5,13 @@ use rand::Rng;
 use arrayfire as af;
 
 fn main() {
-    backend_man();
-    // af::set_backend(af::Backend::CPU);
-    af::set_device(0);
-    af::info();
+    let gpu_compute: bool = false;
+    if gpu_compute {
+        backend_man();
+        // af::set_backend(af::Backend::CPU);
+        af::set_device(0);
+        af::info();
+    }
 
     // let n_iterations = 16384;
     let n_iterations = 2024;
@@ -39,11 +42,17 @@ fn main() {
     let mut model = model::Model::new(width, height, n_particles, n_populations, diffusivity);
     model.print_configurations();
 
-    // let dims = af::Dim4::new(&[n_particles as u64, 1, 1, 1]);
-    for i in 0..n_iterations {
-        model.step();
-        // model.step_cl(dims);
-        pb.set_position(i);
+    if gpu_compute {
+        let dims = af::Dim4::new(&[n_particles as u64, 1, 1, 1]);
+        for i in 0..n_iterations {
+            model.step_cl(dims);
+            pb.set_position(i);
+        }
+    } else {
+        for i in 0..n_iterations {
+            model.step();
+            pb.set_position(i);
+        }
     }
     pb.finish();
 

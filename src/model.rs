@@ -188,16 +188,16 @@ impl Model {
             } = grid.config;
             let (width, height) = (grid.width, grid.height);
 
-            let xc = agent.x + agent.angle.cos() * sensor_distance;
-            let yc = agent.y + agent.angle.sin() * sensor_distance;
+            let xc = agent.x + fastapprox::faster::cos(agent.angle) * sensor_distance;
+            let yc = agent.y + fastapprox::faster::sin(agent.angle) * sensor_distance;
             
             let agent_add_sens = agent.angle + sensor_angle;
             let agent_sub_sens = agent.angle - sensor_angle;
 
-            let xl = agent.x + agent_sub_sens.cos() * sensor_distance;
-            let yl = agent.y + agent_sub_sens.sin() * sensor_distance;
-            let xr = agent.x + agent_add_sens.cos() * sensor_distance;
-            let yr = agent.y + agent_add_sens.sin() * sensor_distance;
+            let xl = agent.x + fastapprox::faster::cos(agent_sub_sens) * sensor_distance;
+            let yl = agent.y + fastapprox::faster::sin(agent_sub_sens) * sensor_distance;
+            let xr = agent.x + fastapprox::faster::cos(agent_add_sens) * sensor_distance;
+            let yr = agent.y + fastapprox::faster::sin(agent_add_sens) * sensor_distance;
 
             // Sense. We sense from the buffer because this is where we previously combined data
             // from all the grid.
