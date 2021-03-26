@@ -4,3 +4,4 @@ pub mod model;
 mod palette;
 pub mod trig; // for benchmarking
 mod util;
+mod imgdata; // for storing image data

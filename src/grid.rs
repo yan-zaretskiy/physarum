@@ -16,6 +16,19 @@ pub struct PopulationConfig {
     deposition_amount: f32,
 }
 
+impl Clone for PopulationConfig {
+    fn clone(&self) -> PopulationConfig {
+        return PopulationConfig {
+            sensor_distance: self.sensor_distance,
+            step_distance: self.step_distance,
+            sensor_angle: self.sensor_angle,
+            rotation_angle: self.rotation_angle,
+            decay_factor: self.decay_factor,
+            deposition_amount: self.deposition_amount,
+        }
+    }
+}
+
 impl Display for PopulationConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -76,6 +89,20 @@ pub struct Grid {
     // Scratch space for the blur operation.
     buf: Vec<f32>,
     blur: Blur,
+}
+
+impl Clone for Grid {
+    fn clone(&self) -> Grid {
+        return Grid {
+            config: self.config.clone(), 
+            width: self.width.clone(), 
+            height: self.height.clone(), 
+            data:  self.data.clone(), 
+            buf: self.buf.clone(), 
+            blur: self.blur.clone(),
+        }
+        // return Grid::new();
+    }
 }
 
 impl Grid {

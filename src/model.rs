@@ -1,7 +1,10 @@
 use crate::{
     grid::{combine, Grid, PopulationConfig},
     palette::{random_palette, Palette},
+    imgdata::ImgData,
 };
+
+
 
 use rand::{seq::SliceRandom, Rng};
 use rand_distr::{Distribution, Normal};
@@ -9,6 +12,11 @@ use rayon::prelude::*;
 
 use itertools::multizip;
 use std::f32::consts::TAU;
+
+use std::time::{Duration, Instant};
+use rayon::iter::{ParallelIterator, IntoParallelIterator};
+
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
 /// numbers instead of integers.
@@ -67,6 +75,9 @@ pub struct Model {
     iteration: i32,
 
     palette: Palette,
+
+    // List of ImgData to be processed post-simulation into images
+    img_data_vec: Vec<ImgData>,
 }
 
 impl Model {
@@ -123,29 +134,33 @@ impl Model {
             diffusivity,
             iteration: 0,
             palette: random_palette(),
+            img_data_vec: Vec::new(),
         }
     }
 
     fn pick_direction<R: Rng + ?Sized>(center: f32, left: f32, right: f32, rng: &mut R) -> f32 {
         if (center > left) && (center > right) {
-            0.0
+            return 0.0;
         } else if (center < left) && (center < right) {
-            *[-1.0, 1.0].choose(rng).unwrap()
+            return *[-1.0, 1.0].choose(rng).unwrap();
         } else if left < right {
-            1.0
+            return 1.0;
         } else if right < left {
-            -1.0
-        } else {
-            0.0
+            return -1.0;
         }
+        return 0.0;
     }
 
     /// Perform a single simulation step.
     pub fn step(&mut self) {
+        let save_image: bool = true;
+
         // Combine grids
         let grids = &mut self.grids;
         combine(grids, &self.attraction_table);
 
+        println!("Starting tick for all agents...");
+        let agents_tick_time = Instant::now();
         self.agents.par_iter_mut().for_each(|agent| {
             let grid = &grids[agent.population_id];
             let PopulationConfig {
@@ -159,10 +174,14 @@ impl Model {
 
             let xc = agent.x + agent.angle.cos() * sensor_distance;
             let yc = agent.y + agent.angle.sin() * sensor_distance;
-            let xl = agent.x + (agent.angle - sensor_angle).cos() * sensor_distance;
-            let yl = agent.y + (agent.angle - sensor_angle).sin() * sensor_distance;
-            let xr = agent.x + (agent.angle + sensor_angle).cos() * sensor_distance;
-            let yr = agent.y + (agent.angle + sensor_angle).sin() * sensor_distance;
+            
+            let agent_add_sens = agent.angle + sensor_angle;
+            let agent_sub_sens = agent.angle - sensor_angle;
+
+            let xl = agent.x + agent_sub_sens.cos() * sensor_distance;
+            let yl = agent.y + agent_sub_sens.sin() * sensor_distance;
+            let xr = agent.x + agent_add_sens.cos() * sensor_distance;
+            let yr = agent.y + agent_add_sens.sin() * sensor_distance;
 
             // Sense. We sense from the buffer because this is where we previously combined data
             // from all the grid.
@@ -176,6 +195,10 @@ impl Model {
             agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
         });
 
+        let agents_tick_elapsed = agents_tick_time.elapsed().as_millis();
+        let ms_per_agent: f64 = (agents_tick_elapsed as f64) / (self.agents.len() as f64);
+        println!("Finished tick for all agents. took {}ms\nTime peragent: {}ms", agents_tick_time.elapsed().as_millis(), ms_per_agent);
+
         // Deposit
         for agent in self.agents.iter() {
             self.grids[agent.population_id].deposit(agent.x, agent.y);
@@ -186,15 +209,56 @@ impl Model {
         self.grids.par_iter_mut().for_each(|grid| {
             grid.diffuse(diffusivity);
         });
+
+        /*
+        println!("Saving image...");
+        let image_save_time = Instant::now();
+        self.save_to_image(format!("./tmp/out_{}.png", self.iteration).as_str());
+        println!("Saved image took {}", image_save_time.elapsed().as_millis());
+        */
+        println!("Saving imgdata...");
+        let image_save_time = Instant::now();
+        self.save_image_data();
+        println!("Saved imgdata, took {}", image_save_time.elapsed().as_millis());
+        
         self.iteration += 1;
     }
 
-    /// Output the current trail layer as a grayscale image.
-    pub fn save_to_image(&self, name: &str) {
-        let (width, height) = (self.grids[0].width, self.grids[0].height);
+
+    fn save_image_data(&mut self) {
+        let grids = self.grids.clone();
+        self.img_data_vec.push(ImgData::new(grids, self.palette, self.iteration));
+    }
+
+    pub fn flush_image_data(&mut self) {
+        self.img_data_vec.clear();
+    }
+
+    pub fn render_all_imgdata(&self) {
+        let pb = ProgressBar::new(self.img_data_vec.len() as u64);
+        pb.set_style(ProgressStyle::default_bar().template(
+            "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] ({pos}/{len}, {percent}%, {per_sec})",
+        ));
+
+        for img in &self.img_data_vec {
+            Self::save_to_image(img.to_owned());
+            pb.inc(1);
+        }
+        pb.finish();
+
+        /*
+        img_data_list.par_iter().progress_with(pb)
+            .foreach(|&img| {
+                save_to_image(img);
+            });
+        */
+    }
+
+    pub fn save_to_image(imgdata: ImgData) {
+        let (width, height) = (imgdata.grids[0].width, imgdata.grids[0].height);
         let mut img = image::RgbImage::new(width as u32, height as u32);
 
-        let max_values: Vec<_> = self
+        let max_values: Vec<_> = imgdata
             .grids
             .iter()
             .map(|grid| grid.quantile(0.999) * 1.5)
@@ -205,8 +269,7 @@ impl Model {
                 let i = y * width + x;
                 let (mut r, mut g, mut b) = (0.0_f32, 0.0_f32, 0.0_f32);
                 for (grid, max_value, color) in
-                    multizip((&self.grids, &max_values, &self.palette.colors))
-                {
+                    multizip((&imgdata.grids, &max_values, &imgdata.palette.colors)) {
                     let mut t = (grid.data()[i] / max_value).clamp(0.0, 1.0);
                     t = t.powf(1.0 / 2.2); // gamma correction
                     r += color.0[0] as f32 * t;
@@ -220,6 +283,7 @@ impl Model {
             }
         }
 
-        img.save(name).unwrap();
+    
+        img.save(format!("./tmp/out_{}.png", imgdata.iteration).as_str()).unwrap();
     }
 }

@@ -1,4 +1,6 @@
 /target
+/tmp
+/test.mp4
 
 # CLion
 **/.idea
