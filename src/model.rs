@@ -155,13 +155,11 @@ impl Model {
 
     /// Perform a single simulation step.
     pub fn step(&mut self) {
-        let save_image: bool = true;
-
         // Combine grids
         let grids = &mut self.grids;
         combine(grids, &self.attraction_table);
 
-        println!("Starting tick for all agents...");
+        // println!("Starting tick for all agents...");
         let agents_tick_time = Instant::now();
         self.agents.par_iter_mut().for_each(|agent| {
             let grid = &grids[agent.population_id];
@@ -196,10 +194,11 @@ impl Model {
             let direction = Model::pick_direction(trail_c, trail_l, trail_r, &mut rng);
             agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
         });
-
+        /*
         let agents_tick_elapsed = agents_tick_time.elapsed().as_millis();
         let ms_per_agent: f64 = (agents_tick_elapsed as f64) / (self.agents.len() as f64);
         println!("Finished tick for all agents. took {}ms\nTime peragent: {}ms", agents_tick_time.elapsed().as_millis(), ms_per_agent);
+        */
 
         // Deposit
         for agent in self.agents.iter() {
@@ -212,17 +211,7 @@ impl Model {
             grid.diffuse(diffusivity);
         });
 
-        /*
-        println!("Saving image...");
-        let image_save_time = Instant::now();
-        self.save_to_image(format!("./tmp/out_{}.png", self.iteration).as_str());
-        println!("Saved image took {}", image_save_time.elapsed().as_millis());
-        */
-        println!("Saving imgdata...");
-        let image_save_time = Instant::now();
         self.save_image_data();
-        println!("Saved imgdata, took {}", image_save_time.elapsed().as_millis());
-        
         self.iteration += 1;
     }
 
@@ -237,7 +226,7 @@ impl Model {
     }
 
     pub fn render_all_imgdata(&self) {
-        if not Path::new("./tmp").exists() {
+        if !Path::new("./tmp").exists() {
             std::fs::create_dir("./tmp");
         }
 
@@ -246,18 +235,18 @@ impl Model {
             "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] ({pos}/{len}, {percent}%, {per_sec})",
         ));
 
+        /*
         for img in &self.img_data_vec {
             Self::save_to_image(img.to_owned());
             pb.inc(1);
         }
         pb.finish();
-
-        /*
-        img_data_list.par_iter().progress_with(pb)
-            .foreach(|&img| {
-                save_to_image(img);
-            });
         */
+
+        (&self.img_data_vec).par_iter().progress_with(pb)
+            .for_each(|img| {
+                Self::save_to_image(img.to_owned());
+            });
     }
 
     pub fn save_to_image(imgdata: ImgData) {

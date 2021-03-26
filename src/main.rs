@@ -4,10 +4,13 @@ use physarum::model;
 use rand::Rng;
 
 fn main() {
-    let n_iterations = 16384;
+    // let n_iterations = 16384;
+    let n_iterations = 4096;
+    // let n_iterations = 10;
+
     // let (width, height) = (512, 512);
-    // let (width, height) = (1024, 1024);
-    let (width, height) = (2048, 2048);
+    let (width, height) = (1024, 1024);
+    // let (width, height) = (2048, 2048);
 
     let n_particles = 1 << 22;
     println!("n_particles: {}", n_particles);
