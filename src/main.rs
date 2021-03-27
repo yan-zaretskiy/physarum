@@ -5,7 +5,7 @@ use rand::Rng;
 use arrayfire as af;
 
 fn main() {
-    let gpu_compute: bool = false;
+    let gpu_compute: bool = true;
     if gpu_compute {
         backend_man();
         // af::set_backend(af::Backend::CPU);
@@ -14,7 +14,7 @@ fn main() {
     }
 
     // let n_iterations = 16384;
-    let n_iterations = 1000;
+    let n_iterations = 2048;
     // let n_iterations = 10;
 
     // let (width, height) = (512, 512);
@@ -23,38 +23,38 @@ fn main() {
 
     // let n_particles = 1 << 22;
     let n_particles = 1 << 24;
+    // let n_particles = 1 << 10;
     // let n_particles = 100;
     println!("n_particles: {}", n_particles);
     let diffusivity = 1;
     let mut rng = rand::thread_rng();
 
-    let pb = ProgressBar::new(n_iterations);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta} {percent}%, {per_sec})",
-            )
-            .progress_chars("#>-"),
-    );
+
 
     // let n_populations = 1 + rng.gen_range(1..4);
-    let n_populations = 10;
+    let n_populations = 1;
     let mut model = model::Model::new(width, height, n_particles, n_populations, diffusivity);
     model.print_configurations();
 
     if gpu_compute {
-        let dims = af::Dim4::new(&[n_particles as u64, 1, 1, 1]);
-        for i in 0..n_iterations {
-            model.step_cl(dims);
-            pb.set_position(i);
-        }
+        model.step_cl(n_iterations);
     } else {
+        let pb = ProgressBar::new(n_iterations as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta} {percent}%, {per_sec})",
+                )
+                .progress_chars("#>-"),
+        );
+
         for i in 0..n_iterations {
             model.step();
-            pb.set_position(i);
+            pb.set_position(i as u64);
         }
+        pb.finish();
     }
-    pb.finish();
+    
 
     println!("Rendering all saved image data....");
     model.render_all_imgdata();

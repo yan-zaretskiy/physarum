@@ -231,116 +231,137 @@ impl Model {
         self.iteration += 1;
     }
 
-    pub fn step_cl(&mut self, dims: af::Dim4) {
-        // Combine grids
-        let grids = &mut self.grids;
-        combine(grids, &self.attraction_table);
+    pub fn step_cl(&mut self, steps: usize) {
+        let pb = ProgressBar::new(steps as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta} {percent}%, {per_sec})",
+                )
+                .progress_chars("#>-"),
+        );
 
-        println!("Starting tick for all agents...");
-        let agents_tick_time = Instant::now();
+
+
+
         let agents_list = &*self.agents.clone();
 
 
         let agent_num: usize = self.agents.len() as usize;
-        // let dims = af::Dim4::new(&[self.agents.len() as u64, 1, 1, 1]);
+        let dims = af::Dim4::new(&[self.agents.len() as u64, 1, 1, 1]);
 
-        let agent_angles_list: Vec<f32> = agents_list.iter().map(|agent| agent.angle).collect();
-        let agent_x_list: Vec<f32> = agents_list.iter().map(|agent| agent.x).collect();
-        let agent_y_list: Vec<f32> = agents_list.iter().map(|agent| agent.y).collect();
+
 
         let mut sensor_distance_list: Vec<f32> = Vec::new();
         let mut sensor_angle_list: Vec<f32> = Vec::new();
         let mut rotation_angle_list: Vec<f32> = Vec::new();
         let mut step_distance_list: Vec<f32> = Vec::new();
-    
-        for agent in &*self.agents.clone() {
-            let grid = &grids[agent.population_id];
-            let PopulationConfig {
-                sensor_distance,
-                sensor_angle,
-                rotation_angle,
-                step_distance,
-                ..
-            } = grid.config;
-            sensor_distance_list.push(sensor_distance);
-            sensor_angle_list.push(sensor_angle);
-            rotation_angle_list.push(rotation_angle);
-            step_distance_list.push(step_distance);
-        }
 
-        let sensor_distance = af::Array::new(&sensor_distance_list, dims);
-        let sensor_angle = af::Array::new(&sensor_angle_list, dims);
+        let mut agent_angles_list: Vec<f32> = Vec::new();
+        let mut agent_x_list: Vec<f32> = Vec::new();
+        let mut agent_y_list: Vec<f32> = Vec::new();
 
-        let agent_angles = af::Array::new(&agent_angles_list, dims);
-        let agent_x = af::Array::new(&agent_x_list, dims);
-        let agent_y = af::Array::new(&agent_y_list, dims);
+        for i in 0..steps {
+            println!("Starting tick for all agents...");
+            let agents_tick_time = Instant::now();
+            // Combine grids
+            let grids = &mut self.grids;
+            combine(grids, &self.attraction_table);
+            agent_angles_list = agents_list.iter().map(|agent| agent.angle).collect();
+            agent_x_list = agents_list.iter().map(|agent| agent.x).collect();
+            agent_y_list = agents_list.iter().map(|agent| agent.y).collect();
+
+            for agent in &*self.agents.clone() {
+                let grid = &grids.clone()[agent.population_id];
+                let PopulationConfig {
+                    sensor_distance,
+                    sensor_angle,
+                    rotation_angle,
+                    step_distance,
+                    ..
+                } = grid.config;
+                sensor_distance_list.push(sensor_distance);
+                sensor_angle_list.push(sensor_angle);
+                rotation_angle_list.push(rotation_angle);
+                step_distance_list.push(step_distance);
+            }
+
+            let sensor_distance = af::Array::new(&sensor_distance_list, dims);
+            let sensor_angle = af::Array::new(&sensor_angle_list, dims);
+
+            let agent_angles = af::Array::new(&agent_angles_list, dims);
+            let agent_x = af::Array::new(&agent_x_list, dims);
+            let agent_y = af::Array::new(&agent_y_list, dims);
 
 
-        let cos_angles = af::cos(&agent_angles);
-        let sin_angles = af::sin(&agent_angles);
+            let cos_angles = af::cos(&agent_angles);
+            let sin_angles = af::sin(&agent_angles);
 
-        let cos_angle_dis = af::mul(&cos_angles, &sensor_distance, false);
-        let sin_angle_dis = af::mul(&sin_angles, &sensor_distance, false);
+            let cos_angle_dis = af::mul(&cos_angles, &sensor_distance, false);
+            let sin_angle_dis = af::mul(&sin_angles, &sensor_distance, false);
 
-        let xc = Self::to_vec(&af::add(&agent_x, &cos_angle_dis, false));
-        let yc = Self::to_vec(&af::add(&agent_y, &sin_angle_dis, false));
-        
-        let agent_add_sens = &agent_angles + &sensor_angle;
-        let agent_sub_sens = &agent_angles - &sensor_angle;
-
-        let agent_add_sens_mul = af::mul(&agent_add_sens, &sensor_distance, false);
-        let agent_sub_sens_mul = af::mul(&agent_sub_sens, &sensor_distance, false);
-
-        let xl = Self::to_vec(&af::add(&agent_x, &af::sin(&agent_sub_sens_mul), false));
-        let yl = Self::to_vec(&af::add(&agent_y, &af::sin(&agent_sub_sens_mul), false));
-        let xr = Self::to_vec(&af::add(&agent_x, &af::sin(&agent_add_sens_mul), false));
-        let yr = Self::to_vec(&af::add(&agent_y, &af::sin(&agent_add_sens_mul), false));
-
-        
-        self.agents.par_iter_mut().for_each(|agent| {
-            let i: usize = agent.i;
-
-            let rotation_angle = rotation_angle_list[i];
-            let step_distance = rotation_angle_list[i];
-
-            let xc = xc[i];
-            let xl = xl[i];
-            let xr = xr[i];
-            let yc = yc[i];
-            let yl = yl[i];
-            let yr = yr[i];
-
-            let grid = &grids[agent.population_id];
-            let (width, height) = (grid.width, grid.height);
+            let xc = Self::to_vec(&af::add(&agent_x, &cos_angle_dis, false));
+            let yc = Self::to_vec(&af::add(&agent_y, &sin_angle_dis, false));
             
-            let trail_c = grid.get_buf(xc, yc);
-            let trail_l = grid.get_buf(xl, yl);
-            let trail_r = grid.get_buf(xr, yr);
+            let agent_add_sens = &agent_angles + &sensor_angle;
+            let agent_sub_sens = &agent_angles - &sensor_angle;
 
-            let mut rng = rand::thread_rng();
-            let direction = Model::pick_direction(trail_c, trail_l, trail_r, &mut rng);
-            agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
-        });
+            let agent_add_sens_mul = af::mul(&agent_add_sens, &sensor_distance, false);
+            let agent_sub_sens_mul = af::mul(&agent_sub_sens, &sensor_distance, false);
 
-        // /*
-        let agents_tick_elapsed = agents_tick_time.elapsed().as_millis();
-        let ms_per_agent: f64 = (agents_tick_elapsed as f64) / (self.agents.len() as f64);
-        println!("Finished tick for all agents. took {}ms\nTime peragent: {}ms", agents_tick_time.elapsed().as_millis(), ms_per_agent);
-        // */
+            let xl = Self::to_vec(&af::add(&agent_x, &af::sin(&agent_sub_sens_mul), false));
+            let yl = Self::to_vec(&af::add(&agent_y, &af::sin(&agent_sub_sens_mul), false));
+            let xr = Self::to_vec(&af::add(&agent_x, &af::sin(&agent_add_sens_mul), false));
+            let yr = Self::to_vec(&af::add(&agent_y, &af::sin(&agent_add_sens_mul), false));
 
-        // Deposit
-        for agent in self.agents.iter() {
-            self.grids[agent.population_id].deposit(agent.x, agent.y);
+            
+            self.agents.par_iter_mut().for_each(|agent| {
+                let i: usize = agent.i;
+
+                let rotation_angle = rotation_angle_list[i];
+                let step_distance = rotation_angle_list[i];
+
+                let xc = xc[i];
+                let xl = xl[i];
+                let xr = xr[i];
+                let yc = yc[i];
+                let yl = yl[i];
+                let yr = yr[i];
+
+                let grid = &grids[agent.population_id];
+                let (width, height) = (grid.width, grid.height);
+                
+                let trail_c = grid.get_buf(xc, yc);
+                let trail_l = grid.get_buf(xl, yl);
+                let trail_r = grid.get_buf(xr, yr);
+
+                let mut rng = rand::thread_rng();
+                let direction = Model::pick_direction(trail_c, trail_l, trail_r, &mut rng);
+                agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
+            });
+
+            // /*
+            let agents_tick_elapsed = agents_tick_time.elapsed().as_millis();
+            let ms_per_agent: f64 = (agents_tick_elapsed as f64) / (self.agents.len() as f64);
+            println!("Finished tick for all agents. took {}ms\nTime peragent: {}ms", agents_tick_time.elapsed().as_millis(), ms_per_agent);
+            // */
+
+            // Deposit
+            for agent in self.agents.iter() {
+                self.grids[agent.population_id].deposit(agent.x, agent.y);
+            }
+
+            // Diffuse + Decay
+            let diffusivity = self.diffusivity;
+            self.grids.par_iter_mut().for_each(|grid| {
+                grid.diffuse(diffusivity);
+            });
+
+            self.save_image_data();
+            self.iteration += 1;
+            pb.set_position(i as u64);
         }
-
-        // Diffuse + Decay
-        let diffusivity = self.diffusivity;
-        self.grids.par_iter_mut().for_each(|grid| {
-            grid.diffuse(diffusivity);
-        });
-
-        self.save_image_data();
-        self.iteration += 1;
+        pb.finish();
     }
     
     fn to_vec<T:af::HasAfEnum+Default+Clone>(array: &af::Array<T>) -> Vec<T> {
