@@ -255,7 +255,7 @@ impl Model {
         pb.finish();
 
         let avg_per_step: f64 = time_per_step_list.iter().sum::<f64>() as f64 / time_per_step_list.len() as f64;
-        let avg_per_agent: f64 = time_per_step_list.iter().sum::<f64>() as f64 / time_per_step_list.len() as f64;
+        let avg_per_agent: f64 = time_per_agent_list.iter().sum::<f64>() as f64 / time_per_agent_list.len() as f64;
         println!("Average time per step: {}\nAverage time per agent: {}", avg_per_step, avg_per_agent);
     }
 
