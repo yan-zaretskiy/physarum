@@ -5,7 +5,7 @@ use rand::Rng;
 use arrayfire as af;
 
 fn main() {
-    let gpu_compute: bool = true;
+    let gpu_compute: bool = false;
     if gpu_compute {
         backend_man();
         // af::set_backend(af::Backend::CPU);
@@ -14,16 +14,16 @@ fn main() {
     }
 
     // let n_iterations = 16384;
-    let n_iterations = 2048;
+    let n_iterations = 100;
     // let n_iterations = 10;
 
-    // let (width, height) = (512, 512);
-    let (width, height) = (1024, 1024);
+    let (width, height) = (512, 512);
+    // let (width, height) = (1024, 1024);
     // let (width, height) = (2048, 2048);
 
-    // let n_particles = 1 << 22;
-    let n_particles = 1 << 24;
+    let n_particles = 1 << 22;
     // let n_particles = 1 << 10;
+    // let n_particles = 1 << 20;
     // let n_particles = 100;
     println!("n_particles: {}", n_particles);
     let diffusivity = 1;
@@ -37,22 +37,9 @@ fn main() {
     model.print_configurations();
 
     if gpu_compute {
-        model.step_cl(n_iterations);
+        model.run_cl(n_iterations);
     } else {
-        let pb = ProgressBar::new(n_iterations as u64);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template(
-                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta} {percent}%, {per_sec})",
-                )
-                .progress_chars("#>-"),
-        );
-
-        for i in 0..n_iterations {
-            model.step();
-            pb.set_position(i as u64);
-        }
-        pb.finish();
+        model.run(n_iterations);
     }
     
 
