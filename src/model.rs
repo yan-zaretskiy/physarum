@@ -183,7 +183,7 @@ impl Model {
         );
 
         for i in 0..steps {
-            if debug {println!("Starting tick for all agents..."));
+            if debug {println!("Starting tick for all agents...")};
 
             // Combine grids
             let grids = &mut self.grids;
