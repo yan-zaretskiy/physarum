@@ -1,7 +1,7 @@
 [package]
 name = "physarum"
 version = "0.1.0"
-authors = ["mindv0rtex <mindv0rtex@users.noreply.github.com>"]
+authors = ["mindv0rtex <mindv0rtex@users.noreply.github.com>", "Simon Gardling <titaniumtown@gmail.com>"]
 edition = "2018"
 
 [dependencies]
@@ -24,10 +24,12 @@ harness = false
 codegen-units = 1
 opt-level = 3
 target-cpu = "native"
-lto = "thin"
+lto = "fat"
+debug = true
 
 [profile.release]
 codegen-units = 1
 opt-level = 3
 target-cpu = "native"
 lto = "fat"
+debug = false

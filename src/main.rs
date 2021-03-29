@@ -5,7 +5,7 @@ use rand::Rng;
 
 fn main() {
     // let n_iterations = 16384;
-    let n_iterations = 1024;
+    let n_iterations = 10;
     // let n_iterations = 100;
     // let n_iterations = 10;
 
@@ -22,10 +22,8 @@ fn main() {
     let diffusivity = 1;
     let mut rng = rand::thread_rng();
 
-
-
     // let n_populations = 1 + rng.gen_range(1..4);
-    let n_populations = 1;
+    let n_populations = 2;
     let mut model = model::Model::new(width, height, n_particles, n_populations, diffusivity);
     model.print_configurations();
 

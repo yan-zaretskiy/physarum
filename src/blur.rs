@@ -38,8 +38,7 @@ impl Blur {
     }
 
     /// Approximate 1D Gaussian filter of standard deviation sigma with N box filter passes. Each
-    /// element in the output array contains the radius of the box filter for the corresponding
-    /// pass.
+    /// element in the output array contains the radius of the box filter for the corresponding pass.
     fn boxes_for_gaussian<const N: usize>(sigma: f32) -> ([usize; N]) {
         let w_ideal = (12.0 * sigma * sigma / N as f32 + 1.0).sqrt();
         let mut w = w_ideal as usize;
@@ -79,13 +78,14 @@ impl Blur {
             .for_each(|(src_row, dst_row)| {
                 // First we build a value for the beginning of each row. We assume periodic boundary
                 // conditions, so we need to push the left index to the opposite side of the row.
+                let width_sub_radius = width - radius;
                 let mut value = src_row[width - radius - 1];
                 for j in 0..radius {
-                    value += src_row[width - radius + j] + src_row[j];
+                    value += src_row[width_sub_radius + j] + src_row[j];
                 }
 
                 for (i, dst_elem) in dst_row.iter_mut().enumerate() {
-                    let left = (i + width - radius - 1) & (width - 1);
+                    let left = (i + width_sub_radius - 1) & (width - 1);
                     let right = (i + radius) & (width - 1);
                     value += src_row[right] - src_row[left];
                     *dst_elem = value * weight;
@@ -109,12 +109,13 @@ impl Blur {
         // We don't replicate the horizontal filter logic because of the cache-unfriendly memory
         // access patterns of sequential iteration over individual columns. Instead, we iterate over
         // rows via loop interchange.
-        let offset = (height - radius - 1) * width;
+        let height_sub_radius = height - radius;
+        let offset = (height_sub_radius - 1) * width;
         self.row_buffer
             .copy_from_slice(&src[offset..offset + width]);
 
         for j in 0..radius {
-            let bottom_off = (height - radius + j) * width;
+            let bottom_off = (height_sub_radius + j) * width;
             let bottom_row = &src[bottom_off..bottom_off + width];
             let top_off = j * width;
             let top_row = &src[top_off..top_off + width];
@@ -126,7 +127,7 @@ impl Blur {
 
         // The outer loop cannot be parallelized because we need to use the buffer sequentially.
         for (i, dst_row) in dst.chunks_exact_mut(width).enumerate() {
-            let bottom_off = ((i + height - radius - 1) & (height - 1)) * width;
+            let bottom_off = ((i + height_sub_radius - 1) & (height - 1)) * width;
             let bottom_row = &src[bottom_off..bottom_off + width];
             let top_off = ((i + radius) & (height - 1)) * width;
             let top_row = &src[top_off..top_off + width];

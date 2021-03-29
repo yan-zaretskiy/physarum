@@ -170,7 +170,7 @@ impl Model {
 
     /// Simulates `steps` # of steps
     pub fn run(&mut self, steps: usize) {
-        let debug: bool = true;
+        let debug: bool = false;
 
         let pb = ProgressBar::new(steps as u64);
         pb.set_style(
@@ -226,16 +226,6 @@ impl Model {
                 agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
             });
 
-            
-            let agents_tick_elapsed: f64 = agents_tick_time.elapsed().as_millis() as f64;
-            let ms_per_agent: f64 = (agents_tick_elapsed as f64) / (self.agents.len() as f64);
-            time_per_agent_list.push(ms_per_agent);
-            time_per_step_list.push(agents_tick_elapsed);
-
-            if debug {
-                println!("Finished tick for all agents. took {}ms\nTime per agent: {}ms\n", agents_tick_elapsed, ms_per_agent);
-            }
-            
 
             // Deposit
             for agent in self.agents.iter() {
@@ -249,6 +239,16 @@ impl Model {
             });
 
             self.save_image_data();
+
+            let agents_tick_elapsed: f64 = agents_tick_time.elapsed().as_millis() as f64;
+            let ms_per_agent: f64 = (agents_tick_elapsed as f64) / (self.agents.len() as f64);
+            time_per_agent_list.push(ms_per_agent);
+            time_per_step_list.push(agents_tick_elapsed);
+
+            if debug {
+                println!("Finished tick for all agents. took {}ms\nTime per agent: {}ms\n", agents_tick_elapsed, ms_per_agent);
+            }
+
             self.iteration += 1;
             pb.set_position(i as u64);
         }
@@ -256,12 +256,21 @@ impl Model {
 
         let avg_per_step: f64 = time_per_step_list.iter().sum::<f64>() as f64 / time_per_step_list.len() as f64;
         let avg_per_agent: f64 = time_per_agent_list.iter().sum::<f64>() as f64 / time_per_agent_list.len() as f64;
-        println!("Average time per step: {}\nAverage time per agent: {}", avg_per_step, avg_per_agent);
+        println!("Average time per step: {}ms\nAverage time per agent: {}ms", avg_per_step, avg_per_agent);
     }
 
     fn save_image_data(&mut self) {
         let grids = self.grids.clone();
-        self.img_data_vec.push(ImgData::new(grids, self.palette, self.iteration));
+        let img_data = ImgData::new(grids, self.palette, self.iteration);
+        self.img_data_vec.push(img_data);
+        if self.grids[0].width > 1024 && self.grids[0].height > 1024 {
+            if self.img_data_vec.len() > 100 {
+                self.render_all_imgdata();
+                self.flush_image_data();
+                return;
+            }
+        }
+        
     }
 
     pub fn flush_image_data(&mut self) {
