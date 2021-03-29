@@ -13,6 +13,7 @@ use std::time::{Instant};
 use rayon::iter::{ParallelIterator,};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use std::path::Path;
+use crate::util::wrap;
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
 /// numbers instead of integers.
@@ -38,16 +39,52 @@ impl Agent {
         }
     }
 
-    /// Update agent's orientation angle and position on the grid.
-    fn rotate_and_move(
-        &mut self,
-        direction: f32,
-        rotation_angle: f32,
-        step_distance: f32,
-        width: usize,
-        height: usize,
-    ) {
-        use crate::util::wrap;
+    fn get_sensor_coords(&mut self, x: f32, y: f32, sensor_distance: f32, sensor_angle: f32, angle: f32) -> (f32, f32, f32, f32, f32, f32) {
+        let xc = x + self.angle.cos() * sensor_distance;
+        let yc = y + self.angle.sin() * sensor_distance;
+        
+        let agent_add_sens = angle + sensor_angle;
+        let agent_sub_sens = angle - sensor_angle;
+
+        let xl = x + agent_sub_sens.cos() * sensor_distance;
+        let yl = y + agent_sub_sens.sin() * sensor_distance;
+        let xr = x + agent_add_sens.cos() * sensor_distance;
+        let yr = y + agent_add_sens.sin() * sensor_distance;
+
+        return (xc, yc, xl, yl, xr, yr);
+    }
+
+    pub fn tick(&mut self, grid: &Grid) {        
+        let (width, height) = (grid.width, grid.height);
+        let PopulationConfig {
+            sensor_distance,
+            sensor_angle,
+            rotation_angle,
+            step_distance,
+            ..
+        } = grid.config;
+
+        let (xc, yc, xl, yl, xr, yr) = Self::get_sensor_coords(self, self.x, self.y, sensor_distance, sensor_angle, self.angle);
+
+        // We sense from the buffer because this is where we previously combined data from all the grid.
+        let center = grid.get_buf(xc, yc);
+        let left = grid.get_buf(xl, yl);
+        let right = grid.get_buf(xr, yr);
+
+        // Rotate and move logic
+        let mut rng = rand::thread_rng();
+        let mut direction: f32 = 0.0;
+        
+        if (center > left) && (center > right) {
+            direction = 0.0;
+        } else if (center < left) && (center < right) {
+            direction = *[-1.0, 1.0].choose(&mut rng).unwrap();
+        } else if left < right {
+            direction = 1.0;
+        } else if right < left {
+            direction = -1.0;
+        }
+
         let delta_angle = rotation_angle * direction;
         self.angle = wrap(self.angle + delta_angle, TAU);
         self.x = wrap(self.x + step_distance * self.angle.cos(), width as f32);
@@ -91,6 +128,7 @@ pub struct Model {
     // Current model iteration.
     iteration: i32,
 
+    // Color palette
     palette: Palette,
 
     // List of ImgData to be processed post-simulation into images
@@ -181,52 +219,11 @@ impl Model {
 
             let agents_tick_time = Instant::now();
 
+            // Tick agents
             self.agents.par_iter_mut().for_each(|agent| {
-                // let i: usize = agent.i;
-
                 let grid = &grids[agent.population_id];
-                let (width, height) = (grid.width, grid.height);
-                let PopulationConfig {
-                    sensor_distance,
-                    sensor_angle,
-                    rotation_angle,
-                    step_distance,
-                    ..
-                } = grid.config;
-
-                let xc = agent.x + agent.angle.cos() * sensor_distance;
-                let yc = agent.y + agent.angle.sin() * sensor_distance;
-                
-                let agent_add_sens = agent.angle + sensor_angle;
-                let agent_sub_sens = agent.angle - sensor_angle;
-
-                let xl = agent.x + agent_sub_sens.cos() * sensor_distance;
-                let yl = agent.y + agent_sub_sens.sin() * sensor_distance;
-                let xr = agent.x + agent_add_sens.cos() * sensor_distance;
-                let yr = agent.y + agent_add_sens.sin() * sensor_distance;
-
-                // We sense from the buffer because this is where we previously combined data from all the grid.
-                let center = grid.get_buf(xc, yc);
-                let left = grid.get_buf(xl, yl);
-                let right = grid.get_buf(xr, yr);
-
-                // Rotate and move logic
-                let mut rng = rand::thread_rng();
-                let mut direction: f32 = 0.0;
-                
-                if (center > left) && (center > right) {
-                    direction = 0.0;
-                } else if (center < left) && (center < right) {
-                    direction = *[-1.0, 1.0].choose(&mut rng).unwrap();
-                } else if left < right {
-                    direction = 1.0;
-                } else if right < left {
-                    direction = -1.0;
-                }
-
-                agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
+                agent.tick(grid);
             });
-
 
             // Deposit
             for agent in self.agents.iter() {

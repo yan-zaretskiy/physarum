@@ -8,7 +8,7 @@ fn main() {
     let (width, height) = (256, 256);
 
     // # of agents
-    let n_particles = 1 << 22;
+    let n_particles = 1 << 24;
     println!("n_particles: {}", n_particles);
 
     let diffusivity = 1;
