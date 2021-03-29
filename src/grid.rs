@@ -76,8 +76,7 @@ impl PopulationConfig {
     }
 }
 
-/// A 2D grid with a scalar value per each grid block. Each grid is occupied by a single population,
-/// hence we store the population config inside the grid.
+/// A 2D grid with a scalar value per each grid block. Each grid is occupied by a single population, hence we store the population config inside the grid.
 #[derive(Debug)]
 pub struct Grid {
     pub config: PopulationConfig,
@@ -101,7 +100,6 @@ impl Clone for Grid {
             buf: self.buf.clone(), 
             blur: self.blur.clone(),
         }
-        // return Grid::new();
     }
 }
 
@@ -132,8 +130,7 @@ impl Grid {
         j * self.width + i
     }
 
-    /// Get the buffer value at a given position. The implementation effectively treats data as
-    /// periodic, hence any finite position will produce a value.
+    /// Get the buffer value at a given position. The implementation effectively treats data as periodic, hence any finite position will produce a value.
     pub fn get_buf(&self, x: f32, y: f32) -> f32 {
         self.buf[self.index(x, y)]
     }
@@ -181,8 +178,7 @@ where
     let datas: Vec<_> = grids.iter().map(|grid| &grid.data).collect();
     let bufs: Vec<_> = grids.iter().map(|grid| &grid.buf).collect();
 
-    // We mutate grid buffers and read grid data. We use unsafe because we need shared/unique
-    // borrows on different fields of the same Grid struct.
+    // We mutate grid buffers and read grid data. We use unsafe because we need shared/unique borrows on different fields of the same Grid struct.
     bufs.iter().enumerate().for_each(|(i, buf)| unsafe {
         let buf_ptr = *buf as *const Vec<f32> as *mut Vec<f32>;
         buf_ptr.as_mut().unwrap().fill(0.0);

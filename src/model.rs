@@ -155,20 +155,9 @@ impl Model {
         }
     }
 
-    fn pick_direction<R: Rng + ?Sized>(center: f32, left: f32, right: f32, rng: &mut R) -> f32 {
-        if (center > left) && (center > right) {
-            return 0.0;
-        } else if (center < left) && (center < right) {
-            return *[-1.0, 1.0].choose(rng).unwrap();
-        } else if left < right {
-            return 1.0;
-        } else if right < left {
-            return -1.0;
-        }
-        return 0.0;
-    }
 
     /// Simulates `steps` # of steps
+    #[inline(always)]
     pub fn run(&mut self, steps: usize) {
         let debug: bool = false;
 
@@ -189,7 +178,9 @@ impl Model {
             // Combine grids
             let grids = &mut self.grids;
             combine(grids, &self.attraction_table);
+
             let agents_tick_time = Instant::now();
+
             self.agents.par_iter_mut().for_each(|agent| {
                 // let i: usize = agent.i;
 
@@ -214,15 +205,25 @@ impl Model {
                 let xr = agent.x + agent_add_sens.cos() * sensor_distance;
                 let yr = agent.y + agent_add_sens.sin() * sensor_distance;
 
-                // Sense. We sense from the buffer because this is where we previously combined data
-                // from all the grid.
-                let trail_c = grid.get_buf(xc, yc);
-                let trail_l = grid.get_buf(xl, yl);
-                let trail_r = grid.get_buf(xr, yr);
+                // We sense from the buffer because this is where we previously combined data from all the grid.
+                let center = grid.get_buf(xc, yc);
+                let left = grid.get_buf(xl, yl);
+                let right = grid.get_buf(xr, yr);
 
-                // Rotate and move
+                // Rotate and move logic
                 let mut rng = rand::thread_rng();
-                let direction = Model::pick_direction(trail_c, trail_l, trail_r, &mut rng);
+                let mut direction: f32 = 0.0;
+                
+                if (center > left) && (center > right) {
+                    direction = 0.0;
+                } else if (center < left) && (center < right) {
+                    direction = *[-1.0, 1.0].choose(&mut rng).unwrap();
+                } else if left < right {
+                    direction = 1.0;
+                } else if right < left {
+                    direction = -1.0;
+                }
+
                 agent.rotate_and_move(direction, rotation_angle, step_distance, width, height);
             });
 
