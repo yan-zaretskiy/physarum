@@ -9,8 +9,8 @@ use rand_distr::{Distribution, Normal};
 use rayon::prelude::*;
 use itertools::multizip;
 use std::f32::consts::TAU;
-use std::time::{Duration, Instant};
-use rayon::iter::{ParallelIterator, IntoParallelIterator};
+use std::time::{Instant};
+use rayon::iter::{ParallelIterator,};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use std::path::Path;
 
@@ -191,7 +191,7 @@ impl Model {
             combine(grids, &self.attraction_table);
             let agents_tick_time = Instant::now();
             self.agents.par_iter_mut().for_each(|agent| {
-                let i: usize = agent.i;
+                // let i: usize = agent.i;
 
                 let grid = &grids[agent.population_id];
                 let (width, height) = (grid.width, grid.height);

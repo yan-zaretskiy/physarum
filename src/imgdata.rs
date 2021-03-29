@@ -1,6 +1,6 @@
 use crate::{
-    grid::{combine, Grid, PopulationConfig},
-    palette::{random_palette, Palette},
+    grid::{Grid},
+    palette::{Palette},
 };
 
 
