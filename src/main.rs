@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use indicatif::{ProgressBar, ProgressStyle};
 use physarum::model;
 use rand::Rng;

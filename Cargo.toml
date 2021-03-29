@@ -5,16 +5,19 @@ authors = ["mindv0rtex <mindv0rtex@users.noreply.github.com>", "Simon Gardling <
 edition = "2018"
 
 [dependencies]
-chrono = "0.4.19"
 image = "0.23.14"
 indicatif = {version = "0.15.0", features = ["rayon"]}
 itertools = "0.10"
 rand = "0.8.3"
 rand_distr = "0.4"
-rayon = "1.5"
+#rayon = "1.5"
+rayon = {git = "https://github.com/rayon-rs/rayon.git"}
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.3.4"
+
+[patch.crates-io]
+rayon = {git = "https://github.com/rayon-rs/rayon.git"} #for using git version of rayon
 
 [[bench]]
 name = "trig"

@@ -83,19 +83,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "chrono"
-version = "0.4.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
-dependencies = [
- "libc",
- "num-integer",
- "num-traits",
- "time",
- "winapi",
-]
-
-[[package]]
 name = "clap"
 version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -500,7 +487,6 @@ checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 name = "physarum"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "criterion",
  "image",
  "indicatif",
@@ -627,8 +613,7 @@ dependencies = [
 [[package]]
 name = "rayon"
 version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b0d8e0819fadc20c74ea8373106ead0600e3a67ef1fe8da56e39b9ae7275674"
+source = "git+https://github.com/rayon-rs/rayon.git#385840e67c98ac9f9121151709e5826c49ca30ea"
 dependencies = [
  "autocfg",
  "crossbeam-deque",
@@ -639,8 +624,7 @@ dependencies = [
 [[package]]
 name = "rayon-core"
 version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ab346ac5921dc62ffa9f89b7a773907511cdfa5490c572ae9be1be33e8afa4a"
+source = "git+https://github.com/rayon-rs/rayon.git#385840e67c98ac9f9121151709e5826c49ca30ea"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",
@@ -801,17 +785,6 @@ dependencies = [
  "jpeg-decoder",
  "miniz_oxide 0.4.4",
  "weezl",
-]
-
-[[package]]
-name = "time"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
-dependencies = [
- "libc",
- "wasi",
- "winapi",
 ]
 
 [[package]]
