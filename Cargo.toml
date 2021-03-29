@@ -19,10 +19,6 @@ criterion = "0.3.4"
 [patch.crates-io]
 rayon = {git = "https://github.com/rayon-rs/rayon.git"} #for using git version of rayon
 
-[[bench]]
-name = "trig"
-harness = false
-
 [profile.dev]
 codegen-units = 1
 opt-level = 3
