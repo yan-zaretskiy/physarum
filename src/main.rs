@@ -1,9 +1,8 @@
-use indicatif::{ProgressBar, ProgressStyle};
 use physarum::model;
 
 fn main() {
     // # of iterations to go through
-    let n_iterations = 1024;
+    let n_iterations = 512;
 
     // Size of grid and pictures
     let (width, height) = (256, 256);
