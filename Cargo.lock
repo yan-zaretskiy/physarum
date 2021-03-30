@@ -249,6 +249,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
+name = "fastapprox"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0031c93f37b5d18272de2d932ebff6a7eb32d4bc3bab6751a9af42da7d1a424"
+
+[[package]]
 name = "getrandom"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -488,6 +494,7 @@ name = "physarum"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "fastapprox",
  "image",
  "indicatif",
  "itertools 0.10.0",

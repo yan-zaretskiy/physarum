@@ -2,6 +2,7 @@ use crate::{
     grid::{combine, Grid, PopulationConfig},
     palette::{random_palette, Palette},
     imgdata::ImgData,
+    util::wrap,
 };
 
 use rand::{seq::SliceRandom, Rng};
@@ -13,7 +14,6 @@ use std::time::{Instant};
 use rayon::iter::{ParallelIterator,};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use std::path::Path;
-use crate::util::wrap;
 
 /// A single Physarum agent. The x and y positions are continuous, hence we use floating point
 /// numbers instead of integers.
@@ -39,21 +39,7 @@ impl Agent {
         }
     }
 
-    fn get_sensor_coords(&mut self, x: f32, y: f32, sensor_distance: f32, sensor_angle: f32, angle: f32) -> (f32, f32, f32, f32, f32, f32) {
-        let xc = x + self.angle.cos() * sensor_distance;
-        let yc = y + self.angle.sin() * sensor_distance;
-        
-        let agent_add_sens = angle + sensor_angle;
-        let agent_sub_sens = angle - sensor_angle;
-
-        let xl = x + agent_sub_sens.cos() * sensor_distance;
-        let yl = y + agent_sub_sens.sin() * sensor_distance;
-        let xr = x + agent_add_sens.cos() * sensor_distance;
-        let yr = y + agent_add_sens.sin() * sensor_distance;
-
-        return (xc, yc, xl, yl, xr, yr);
-    }
-
+    #[inline]
     pub fn tick(&mut self, grid: &Grid) {        
         let (width, height) = (grid.width, grid.height);
         let PopulationConfig {
@@ -64,7 +50,16 @@ impl Agent {
             ..
         } = grid.config;
 
-        let (xc, yc, xl, yl, xr, yr) = Self::get_sensor_coords(self, self.x, self.y, sensor_distance, sensor_angle, self.angle);
+        let xc = self.x + fastapprox::faster::cos(self.angle) * sensor_distance;
+        let yc = self.y + fastapprox::faster::sin(self.angle) * sensor_distance;
+        
+        let agent_add_sens = self.angle + sensor_angle;
+        let agent_sub_sens = self.angle - sensor_angle;
+
+        let xl = self.x + fastapprox::faster::cos(agent_sub_sens) * sensor_distance;
+        let yl = self.y + fastapprox::faster::sin(agent_sub_sens) * sensor_distance;
+        let xr = self.x + fastapprox::faster::cos(agent_add_sens) * sensor_distance;
+        let yr = self.y + fastapprox::faster::sin(agent_add_sens) * sensor_distance;
 
         // We sense from the buffer because this is where we previously combined data from all the grid.
         let center = grid.get_buf(xc, yc);
@@ -86,9 +81,10 @@ impl Agent {
         }
 
         let delta_angle = rotation_angle * direction;
+
         self.angle = wrap(self.angle + delta_angle, TAU);
-        self.x = wrap(self.x + step_distance * self.angle.cos(), width as f32);
-        self.y = wrap(self.y + step_distance * self.angle.sin(), height as f32);
+        self.x = wrap(self.x + step_distance * fastapprox::faster::cos(self.angle), width as f32);
+        self.y = wrap(self.y + step_distance * fastapprox::faster::sin(self.angle), height as f32);
     }
 }
 
@@ -195,7 +191,7 @@ impl Model {
 
 
     /// Simulates `steps` # of steps
-    #[inline(always)]
+    #[inline]
     pub fn run(&mut self, steps: usize) {
         let debug: bool = false;
 
@@ -221,11 +217,10 @@ impl Model {
 
             // Tick agents
             self.agents.par_iter_mut().for_each(|agent| {
-                let grid = &grids[agent.population_id];
-                agent.tick(grid);
+                agent.tick(&grids[agent.population_id]);
             });
 
-            // Deposit
+            // Deposit // TODO - Make this parallel
             for agent in self.agents.iter() {
                 self.grids[agent.population_id].deposit(agent.x, agent.y);
             }
@@ -243,9 +238,7 @@ impl Model {
             time_per_agent_list.push(ms_per_agent);
             time_per_step_list.push(agents_tick_elapsed);
 
-            if debug {
-                println!("Finished tick for all agents. took {}ms\nTime per agent: {}ms\n", agents_tick_elapsed, ms_per_agent);
-            }
+            if debug {println!("Finished tick for all agents. took {}ms\nTime per agent: {}ms\n", agents_tick_elapsed, ms_per_agent)};
 
             self.iteration += 1;
             pb.set_position(i as u64);
