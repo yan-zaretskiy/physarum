@@ -5,7 +5,8 @@ fn main() {
     let n_iterations = 2048;
 
     // Size of grid and pictures
-    let (width, height) = (256, 256);
+    // let (width, height) = (256, 256);
+    let (width, height) = (1024, 1024);
 
     // # of agents
     let n_particles = 1 << 20;

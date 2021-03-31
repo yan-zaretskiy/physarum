@@ -1,18 +1,13 @@
-#[inline(always)]
-fn to_radians(x: f32) -> f32 {
-    x * (std::f32::consts::PI / 180.0)
-}
-
-/// Previously from trig.rs
-/// From https://bits.stephan-brumme.com/absFloat.html
+// Previously from trig.rs
+// From https://bits.stephan-brumme.com/absFloat.html
 #[allow(dead_code)]
 #[inline(always)]
 fn abs(x: f32) -> f32 {
     return f32::from_bits(x.to_bits() & 0x7FFF_FFFF);
 }
 
-/// Previously from trig.rs
-/// Branchless floor implementation
+// Previously from trig.rs
+// Branchless floor implementation
 #[allow(dead_code)]
 #[inline(always)]
 fn floor(x: f32) -> f32 {
@@ -21,9 +16,9 @@ fn floor(x: f32) -> f32 {
     return x_trunc;
 }
 
-/// Previously from trig.rs
-/// Approximates `cos(x)` in radians with the maximum error of `0.002`
-/// https://stackoverflow.com/posts/28050328/revisions
+// Previously from trig.rs
+// Approximates `cos(x)` in radians with the maximum error of `0.002`
+// https://stackoverflow.com/posts/28050328/revisions
 #[allow(dead_code)]
 #[inline(always)]
 pub fn cos(mut x: f32) -> f32 {
@@ -35,8 +30,8 @@ pub fn cos(mut x: f32) -> f32 {
     return x;
 }
 
-/// Previously from trig.rs
-/// Approximates `sin(x)` in radians with the maximum error of `0.002`
+// Previously from trig.rs
+// Approximates `sin(x)` in radians with the maximum error of `0.002`
 #[allow(dead_code)]
 #[inline(always)]
 pub fn sin(x: f32) -> f32 {

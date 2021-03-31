@@ -11,12 +11,11 @@ use rayon::prelude::*;
 use itertools::multizip;
 use std::f32::consts::TAU;
 use std::time::{Instant};
-use rayon::iter::{ParallelIterator,};
+use rayon::iter::ParallelIterator;
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use std::path::Path;
 
-/// A single Physarum agent. The x and y positions are continuous, hence we use floating point
-/// numbers instead of integers.
+// A single Physarum agent. The x and y positions are continuous, hence we use floating point numbers instead of integers.
 #[derive(Debug)]
 struct Agent {
     x: f32,
@@ -27,7 +26,7 @@ struct Agent {
 }
 
 impl Agent {
-    /// Construct a new agent with random parameters.
+    // Construct a new agent with random parameters.
     fn new<R: Rng + ?Sized>(width: usize, height: usize, id: usize, rng: &mut R, i: usize) -> Self {
         let (x, y, angle) = rng.gen::<(f32, f32, f32)>();
         Agent {
@@ -107,7 +106,7 @@ impl PartialEq for Agent {
 }
 
 
-/// Top-level simulation class.
+// Top-level simulation class.
 pub struct Model {
     // Physarum agents.
     agents: Vec<Agent>,
@@ -144,7 +143,7 @@ impl Model {
         println!("Attraction table: {:#?}", self.attraction_table);
     }
 
-    /// Construct a new model with random initial conditions and random configuration.
+    // Construct a new model with random initial conditions and random configuration.
     pub fn new(
         width: usize,
         height: usize,
@@ -190,7 +189,7 @@ impl Model {
     }
 
 
-    /// Simulates `steps` # of steps
+    // Simulates `steps` # of steps
     #[inline]
     pub fn run(&mut self, steps: usize) {
         let debug: bool = false;

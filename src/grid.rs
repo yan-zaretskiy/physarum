@@ -4,7 +4,7 @@ use rand::{distributions::Uniform, Rng};
 
 use std::fmt::{Display, Formatter};
 
-/// A population configuration.
+// A population configuration.
 #[derive(Debug)]
 pub struct PopulationConfig {
     pub sensor_distance: f32,
@@ -58,7 +58,7 @@ impl PopulationConfig {
     const DECAY_FACTOR_MIN: f32 = 0.1;
     const DECAY_FACTOR_MAX: f32 = 0.1;
 
-    /// Construct a random configuration.
+    // Construct a random configuration.
     pub fn new<R: Rng + ?Sized>(rng: &mut R) -> Self {
         PopulationConfig {
             sensor_distance: rng.gen_range(Self::SENSOR_DISTANCE_MIN..=Self::SENSOR_DISTANCE_MAX),
@@ -76,7 +76,7 @@ impl PopulationConfig {
     }
 }
 
-/// A 2D grid with a scalar value per each grid block. Each grid is occupied by a single population, hence we store the population config inside the grid.
+// A 2D grid with a scalar value per each grid block. Each grid is occupied by a single population, hence we store the population config inside the grid.
 #[derive(Debug)]
 pub struct Grid {
     pub config: PopulationConfig,
@@ -104,7 +104,7 @@ impl Clone for Grid {
 }
 
 impl Grid {
-    /// Create a new grid filled with random floats in the [0.0..1.0) range.
+    // Create a new grid filled with random floats in the [0.0..1.0) range.
     pub fn new<R: Rng + ?Sized>(width: usize, height: usize, rng: &mut R) -> Self {
         if !width.is_power_of_two() || !height.is_power_of_two() {
             panic!("Grid dimensions must be a power of two.");
@@ -122,7 +122,7 @@ impl Grid {
         }
     }
 
-    /// Truncate x and y and return a corresponding index into the data slice.
+    // Truncate x and y and return a corresponding index into the data slice.
     fn index(&self, x: f32, y: f32) -> usize {
         // x/y can come in negative, hence we shift them by width/height.
         let i = (x + self.width as f32) as usize & (self.width - 1);
@@ -130,18 +130,18 @@ impl Grid {
         j * self.width + i
     }
 
-    /// Get the buffer value at a given position. The implementation effectively treats data as periodic, hence any finite position will produce a value.
+    // Get the buffer value at a given position. The implementation effectively treats data as periodic, hence any finite position will produce a value.
     pub fn get_buf(&self, x: f32, y: f32) -> f32 {
         self.buf[self.index(x, y)]
     }
 
-    /// Add a value to the grid data at a given position.
+    // Add a value to the grid data at a given position.
     pub fn deposit(&mut self, x: f32, y: f32) {
         let idx = self.index(x, y);
         self.data[idx] += self.config.deposition_amount;
     }
 
-    /// Diffuse grid data and apply a decay multiplier.
+    // Diffuse grid data and apply a decay multiplier.
     pub fn diffuse(&mut self, radius: usize) {
         self.blur.run(
             &mut self.data,

@@ -6,3 +6,6 @@
     - Try using [emu](https://github.com/calebwin/emu) (seems to be a very good option)
 - sin and cos optimizations
     - sin/cos table?
+- Make colisions for walls of grid
+- Add config and cmd arguments when running the binary to adjust simulation settings
+- Rewrite `grid.rs`
