@@ -25,7 +25,7 @@ impl Clone for PopulationConfig {
             rotation_angle: self.rotation_angle,
             decay_factor: self.decay_factor,
             deposition_amount: self.deposition_amount,
-        }
+        };
     }
 }
 
@@ -93,13 +93,13 @@ pub struct Grid {
 impl Clone for Grid {
     fn clone(&self) -> Grid {
         return Grid {
-            config: self.config.clone(), 
-            width: self.width.clone(), 
-            height: self.height.clone(), 
-            data:  self.data.clone(), 
-            buf: self.buf.clone(), 
+            config: self.config.clone(),
+            width: self.width.clone(),
+            height: self.height.clone(),
+            data: self.data.clone(),
+            buf: self.buf.clone(),
             blur: self.blur.clone(),
-        }
+        };
     }
 }
 

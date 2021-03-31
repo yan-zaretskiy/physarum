@@ -10,7 +10,7 @@ impl Clone for Blur {
     fn clone(&self) -> Blur {
         return Blur {
             row_buffer: self.row_buffer.clone(),
-        }
+        };
     }
 }
 

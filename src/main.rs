@@ -17,15 +17,13 @@ fn main() {
     // `n_populations` is the # of types of agents
     let n_populations = 1;
     // let n_populations = 1 + rng.gen_range(1..4); // make # of populations between 2 and 5
-    
-
 
     let mut model = model::Model::new(width, height, n_particles, n_populations, diffusivity); // Create the model
 
     model.print_configurations(); // Print config for model
 
     model.run(n_iterations); // Actually run the model
-    
+
     // export saved image data
     println!("Rendering all saved image data....");
     model.render_all_imgdata();

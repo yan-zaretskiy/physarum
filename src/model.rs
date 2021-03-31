@@ -1,19 +1,16 @@
 use crate::{
     grid::{combine, Grid, PopulationConfig},
-    palette::{random_palette, Palette},
     imgdata::ImgData,
+    palette::{random_palette, Palette},
     util::wrap,
 };
 
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
+use itertools::multizip;
 use rand::{seq::SliceRandom, Rng};
 use rand_distr::{Distribution, Normal};
-use rayon::prelude::*;
-use itertools::multizip;
-use std::f32::consts::TAU;
-use std::time::{Instant};
-use rayon::iter::ParallelIterator;
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
-use std::path::Path;
+use rayon::{iter::ParallelIterator, prelude::*};
+use std::{f32::consts::TAU, path::Path, time::Instant};
 
 // A single Physarum agent. The x and y positions are continuous, hence we use floating point numbers instead of integers.
 #[derive(Debug)]
@@ -39,7 +36,7 @@ impl Agent {
     }
 
     #[inline]
-    pub fn tick(&mut self, grid: &Grid) {        
+    pub fn tick(&mut self, grid: &Grid) {
         let (width, height) = (grid.width, grid.height);
         let PopulationConfig {
             sensor_distance,
@@ -51,7 +48,7 @@ impl Agent {
 
         let xc = self.x + fastapprox::faster::cos(self.angle) * sensor_distance;
         let yc = self.y + fastapprox::faster::sin(self.angle) * sensor_distance;
-        
+
         let agent_add_sens = self.angle + sensor_angle;
         let agent_sub_sens = self.angle - sensor_angle;
 
@@ -68,7 +65,7 @@ impl Agent {
         // Rotate and move logic
         let mut rng = rand::thread_rng();
         let mut direction: f32 = 0.0;
-        
+
         if (center > left) && (center > right) {
             direction = 0.0;
         } else if (center < left) && (center < right) {
@@ -82,8 +79,14 @@ impl Agent {
         let delta_angle = rotation_angle * direction;
 
         self.angle = wrap(self.angle + delta_angle, TAU);
-        self.x = wrap(self.x + step_distance * fastapprox::faster::cos(self.angle), width as f32);
-        self.y = wrap(self.y + step_distance * fastapprox::faster::sin(self.angle), height as f32);
+        self.x = wrap(
+            self.x + step_distance * fastapprox::faster::cos(self.angle),
+            width as f32,
+        );
+        self.y = wrap(
+            self.y + step_distance * fastapprox::faster::sin(self.angle),
+            height as f32,
+        );
     }
 }
 
@@ -95,16 +98,19 @@ impl Clone for Agent {
             angle: self.angle,
             population_id: self.population_id,
             i: self.i,
-        }
+        };
     }
 }
 
 impl PartialEq for Agent {
     fn eq(&self, other: &Self) -> bool {
-        return self.x == other.x && self.y == other.y && self.angle == other.angle && self.population_id == other.population_id && self.i == other.i;
+        return self.x == other.x
+            && self.y == other.y
+            && self.angle == other.angle
+            && self.population_id == other.population_id
+            && self.i == other.i;
     }
 }
-
 
 // Top-level simulation class.
 pub struct Model {
@@ -188,7 +194,6 @@ impl Model {
         }
     }
 
-
     // Simulates `steps` # of steps
     #[inline]
     pub fn run(&mut self, steps: usize) {
@@ -206,7 +211,9 @@ impl Model {
         let mut time_per_agent_list: Vec<f64> = Vec::new();
         let mut time_per_step_list: Vec<f64> = Vec::new();
         for i in 0..steps {
-            if debug {println!("Starting tick for all agents...")};
+            if debug {
+                println!("Starting tick for all agents...")
+            };
 
             // Combine grids
             let grids = &mut self.grids;
@@ -237,16 +244,26 @@ impl Model {
             time_per_agent_list.push(ms_per_agent);
             time_per_step_list.push(agents_tick_elapsed);
 
-            if debug {println!("Finished tick for all agents. took {}ms\nTime per agent: {}ms\n", agents_tick_elapsed, ms_per_agent)};
+            if debug {
+                println!(
+                    "Finished tick for all agents. took {}ms\nTime per agent: {}ms\n",
+                    agents_tick_elapsed, ms_per_agent
+                )
+            };
 
             self.iteration += 1;
             pb.set_position(i as u64);
         }
         pb.finish();
 
-        let avg_per_step: f64 = time_per_step_list.iter().sum::<f64>() as f64 / time_per_step_list.len() as f64;
-        let avg_per_agent: f64 = time_per_agent_list.iter().sum::<f64>() as f64 / time_per_agent_list.len() as f64;
-        println!("Average time per step: {}ms\nAverage time per agent: {}ms", avg_per_step, avg_per_agent);
+        let avg_per_step: f64 =
+            time_per_step_list.iter().sum::<f64>() as f64 / time_per_step_list.len() as f64;
+        let avg_per_agent: f64 =
+            time_per_agent_list.iter().sum::<f64>() as f64 / time_per_agent_list.len() as f64;
+        println!(
+            "Average time per step: {}ms\nAverage time per agent: {}ms",
+            avg_per_step, avg_per_agent
+        );
     }
 
     fn save_image_data(&mut self) {
@@ -260,7 +277,6 @@ impl Model {
                 return;
             }
         }
-        
     }
 
     pub fn flush_image_data(&mut self) {
@@ -285,7 +301,9 @@ impl Model {
         pb.finish();
         */
 
-        (&self.img_data_vec).par_iter().progress_with(pb)
+        (&self.img_data_vec)
+            .par_iter()
+            .progress_with(pb)
             .for_each(|img| {
                 Self::save_to_image(img.to_owned());
             });
@@ -306,7 +324,8 @@ impl Model {
                 let i = y * width + x;
                 let (mut r, mut g, mut b) = (0.0_f32, 0.0_f32, 0.0_f32);
                 for (grid, max_value, color) in
-                    multizip((&imgdata.grids, &max_values, &imgdata.palette.colors)) {
+                    multizip((&imgdata.grids, &max_values, &imgdata.palette.colors))
+                {
                     let mut t = (grid.data()[i] / max_value).clamp(0.0, 1.0);
                     t = t.powf(1.0 / 2.2); // gamma correction
                     r += color.0[0] as f32 * t;
@@ -320,7 +339,7 @@ impl Model {
             }
         }
 
-    
-        img.save(format!("./tmp/out_{}.png", imgdata.iteration).as_str()).unwrap();
+        img.save(format!("./tmp/out_{}.png", imgdata.iteration).as_str())
+            .unwrap();
     }
 }
