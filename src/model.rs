@@ -179,26 +179,26 @@ impl Model {
                     ..
                 } = grid.config;
                 
-                let xc = agent.x + fastapprox::faster::cos(agent.angle) * sensor_distance;
-                let yc = agent.y + fastapprox::faster::sin(agent.angle) * sensor_distance;
+                let mut rng = rand::thread_rng();
+                let mut direction: f32 = 0.0;
                 
                 let agent_add_sens = agent.angle + sensor_angle;
                 let agent_sub_sens = agent.angle - sensor_angle;
                 
                 let xl = agent.x + fastapprox::faster::cos(agent_sub_sens) * sensor_distance;
                 let yl = agent.y + fastapprox::faster::sin(agent_sub_sens) * sensor_distance;
+                let left = grid.get_buf(xl, yl);
+
                 let xr = agent.x + fastapprox::faster::cos(agent_add_sens) * sensor_distance;
                 let yr = agent.y + fastapprox::faster::sin(agent_add_sens) * sensor_distance;
-                
-                // We sense from the buffer because this is where we previously combined data from all the grid.
-                let center = grid.get_buf(xc, yc);
-                let left = grid.get_buf(xl, yl);
                 let right = grid.get_buf(xr, yr);
+
+                let xc = agent.x + fastapprox::faster::cos(agent.angle) * sensor_distance;
+                let yc = agent.y + fastapprox::faster::sin(agent.angle) * sensor_distance;
+                let center = grid.get_buf(xc, yc);
+                // println!("{} {} {}", right, left, center);
                 
                 // Rotate and move logic
-                let mut rng = rand::thread_rng();
-                let mut direction: f32 = 0.0;
-                
                 if (center > left) && (center > right) {
                     direction = 0.0;
                 } else if (center < left) && (center < right) {
