@@ -1,4 +1,4 @@
-## sin and cos optimizations:
+## sin and cos implementations:
 ### Setup/Info:
 - measured in ms/agent ticked
 - 2048 iterations

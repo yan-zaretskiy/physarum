@@ -34,60 +34,6 @@ impl Agent {
             i: i,
         }
     }
-
-    #[inline]
-    pub fn tick(&mut self, grid: &Grid) {
-        let (width, height) = (grid.width, grid.height);
-        let PopulationConfig {
-            sensor_distance,
-            sensor_angle,
-            rotation_angle,
-            step_distance,
-            ..
-        } = grid.config;
-
-        let xc = self.x + fastapprox::faster::cos(self.angle) * sensor_distance;
-        let yc = self.y + fastapprox::faster::sin(self.angle) * sensor_distance;
-
-        let agent_add_sens = self.angle + sensor_angle;
-        let agent_sub_sens = self.angle - sensor_angle;
-
-        let xl = self.x + fastapprox::faster::cos(agent_sub_sens) * sensor_distance;
-        let yl = self.y + fastapprox::faster::sin(agent_sub_sens) * sensor_distance;
-        let xr = self.x + fastapprox::faster::cos(agent_add_sens) * sensor_distance;
-        let yr = self.y + fastapprox::faster::sin(agent_add_sens) * sensor_distance;
-
-        // We sense from the buffer because this is where we previously combined data from all the grid.
-        let center = grid.get_buf(xc, yc);
-        let left = grid.get_buf(xl, yl);
-        let right = grid.get_buf(xr, yr);
-
-        // Rotate and move logic
-        let mut rng = rand::thread_rng();
-        let mut direction: f32 = 0.0;
-
-        if (center > left) && (center > right) {
-            direction = 0.0;
-        } else if (center < left) && (center < right) {
-            direction = *[-1.0, 1.0].choose(&mut rng).unwrap();
-        } else if left < right {
-            direction = 1.0;
-        } else if right < left {
-            direction = -1.0;
-        }
-
-        let delta_angle = rotation_angle * direction;
-
-        self.angle = wrap(self.angle + delta_angle, TAU);
-        self.x = wrap(
-            self.x + step_distance * fastapprox::faster::cos(self.angle),
-            width as f32,
-        );
-        self.y = wrap(
-            self.y + step_distance * fastapprox::faster::sin(self.angle),
-            height as f32,
-        );
-    }
 }
 
 impl Clone for Agent {
@@ -223,7 +169,57 @@ impl Model {
 
             // Tick agents
             self.agents.par_iter_mut().for_each(|agent| {
-                agent.tick(&grids[agent.population_id]);
+                let grid = &grids[agent.population_id];
+                let (width, height) = (grid.width, grid.height);
+                let PopulationConfig {
+                    sensor_distance,
+                    sensor_angle,
+                    rotation_angle,
+                    step_distance,
+                    ..
+                } = grid.config;
+                
+                let xc = agent.x + fastapprox::faster::cos(agent.angle) * sensor_distance;
+                let yc = agent.y + fastapprox::faster::sin(agent.angle) * sensor_distance;
+                
+                let agent_add_sens = agent.angle + sensor_angle;
+                let agent_sub_sens = agent.angle - sensor_angle;
+                
+                let xl = agent.x + fastapprox::faster::cos(agent_sub_sens) * sensor_distance;
+                let yl = agent.y + fastapprox::faster::sin(agent_sub_sens) * sensor_distance;
+                let xr = agent.x + fastapprox::faster::cos(agent_add_sens) * sensor_distance;
+                let yr = agent.y + fastapprox::faster::sin(agent_add_sens) * sensor_distance;
+                
+                // We sense from the buffer because this is where we previously combined data from all the grid.
+                let center = grid.get_buf(xc, yc);
+                let left = grid.get_buf(xl, yl);
+                let right = grid.get_buf(xr, yr);
+                
+                // Rotate and move logic
+                let mut rng = rand::thread_rng();
+                let mut direction: f32 = 0.0;
+                
+                if (center > left) && (center > right) {
+                    direction = 0.0;
+                } else if (center < left) && (center < right) {
+                    direction = *[-1.0, 1.0].choose(&mut rng).unwrap();
+                } else if left < right {
+                    direction = 1.0;
+                } else if right < left {
+                    direction = -1.0;
+                }
+                
+                let delta_angle = rotation_angle * direction;
+                
+                agent.angle = wrap(agent.angle + delta_angle, TAU);
+                agent.x = wrap(
+                    agent.x + step_distance * fastapprox::faster::cos(agent.angle),
+                    width as f32,
+                );
+                agent.y = wrap(
+                    agent.y + step_distance * fastapprox::faster::sin(agent.angle),
+                    height as f32,
+                );
             });
 
             // Deposit // TODO - Make this parallel
