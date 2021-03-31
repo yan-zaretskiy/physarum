@@ -9,14 +9,14 @@ pub fn random_palette() -> Palette {
     let mut rng = thread_rng();
     let mut palette = PALETTES[rng.gen_range(0..PALETTES.len())];
     palette.colors.shuffle(&mut rng);
-    return palette;
+    palette
 }
 
 const fn hex_to_color(c: usize) -> image::Rgb<u8> {
     let r = (c >> 16) & 0xff;
     let g = (c >> 8) & 0xff;
     let b = (c >> 0) & 0xff;
-    return image::Rgb::<u8>([r as u8, g as u8, b as u8]);
+    image::Rgb::<u8>([r as u8, g as u8, b as u8])
 }
 
 const PALETTES: [Palette; 8] = [

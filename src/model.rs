@@ -31,30 +31,30 @@ impl Agent {
             y: y * height as f32,
             angle: angle * TAU,
             population_id: id,
-            i: i,
+            i,
         }
     }
 }
 
 impl Clone for Agent {
     fn clone(&self) -> Agent {
-        return Agent {
+        Agent {
             x: self.x,
             y: self.y,
             angle: self.angle,
             population_id: self.population_id,
             i: self.i,
-        };
+        }
     }
 }
 
 impl PartialEq for Agent {
     fn eq(&self, other: &Self) -> bool {
-        return self.x == other.x
+        self.x == other.x
             && self.y == other.y
             && self.angle == other.angle
             && self.population_id == other.population_id
-            && self.i == other.i;
+            && self.i == other.i
     }
 }
 
@@ -266,12 +266,10 @@ impl Model {
         let grids = self.grids.clone();
         let img_data = ImgData::new(grids, self.palette, self.iteration);
         self.img_data_vec.push(img_data);
-        if self.grids[0].width > 1024 && self.grids[0].height > 1024 {
-            if self.img_data_vec.len() > 100 {
-                self.render_all_imgdata();
-                self.flush_image_data();
-                return;
-            }
+        if self.grids[0].width > 1024 && self.grids[0].height > 1024 && self.img_data_vec.len() > 100 {
+            self.render_all_imgdata();
+            self.flush_image_data();
+            
         }
     }
 

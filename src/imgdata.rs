@@ -9,11 +9,11 @@ pub struct ImgData {
 
 impl Clone for ImgData {
     fn clone(&self) -> ImgData {
-        return ImgData {
+        ImgData {
             grids: self.grids.clone(),
-            palette: self.palette.clone(),
-            iteration: self.iteration.clone(),
-        };
+            palette: self.palette,
+            iteration: self.iteration,
+        }
     }
 }
 

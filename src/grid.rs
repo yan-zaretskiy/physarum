@@ -18,14 +18,14 @@ pub struct PopulationConfig {
 
 impl Clone for PopulationConfig {
     fn clone(&self) -> PopulationConfig {
-        return PopulationConfig {
+        PopulationConfig {
             sensor_distance: self.sensor_distance,
             step_distance: self.step_distance,
             sensor_angle: self.sensor_angle,
             rotation_angle: self.rotation_angle,
             decay_factor: self.decay_factor,
             deposition_amount: self.deposition_amount,
-        };
+        }
     }
 }
 
@@ -92,14 +92,14 @@ pub struct Grid {
 
 impl Clone for Grid {
     fn clone(&self) -> Grid {
-        return Grid {
+        Grid {
             config: self.config.clone(),
-            width: self.width.clone(),
-            height: self.height.clone(),
+            width: self.width,
+            height: self.height,
             data: self.data.clone(),
             buf: self.buf.clone(),
             blur: self.blur.clone(),
-        };
+        }
     }
 }
 
